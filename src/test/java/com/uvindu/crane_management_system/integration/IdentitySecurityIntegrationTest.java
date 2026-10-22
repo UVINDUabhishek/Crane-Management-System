@@ -4,12 +4,33 @@ import com.uvindu.crane_management_system.integration.support.AbstractIntegratio
 import com.uvindu.crane_management_system.model.User;
 import com.uvindu.crane_management_system.model.UserRole;
 import org.junit.jupiter.api.Test;
+import com.uvindu.crane_management_system.controller.AuthController;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class IdentitySecurityIntegrationTest extends AbstractIntegrationTest {
+    @Autowired private AuthController authController;
+
+    @Test
+    void identityMethodRequiresAuthenticationEvenOutsideHttpFilterChain() {
+        var previousContext = SecurityContextHolder.getContext();
+        SecurityContextHolder.clearContext();
+        try {
+            var suppliedPrincipal = new UsernamePasswordAuthenticationToken("admin@test.local", null);
+            assertThatThrownBy(() -> authController.me(suppliedPrincipal))
+                    .isInstanceOf(AuthenticationCredentialsNotFoundException.class);
+        } finally {
+            SecurityContextHolder.setContext(previousContext);
+        }
+    }
+
     @Test
     void identityReturnsOnlySafeFieldsForEveryRole() throws Exception {
         User maintenance = new User();

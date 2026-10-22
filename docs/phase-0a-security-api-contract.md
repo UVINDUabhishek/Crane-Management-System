@@ -16,7 +16,7 @@ Inspection of the original controllers, DTOs, services, filter, and tests confir
 ### Authentication and safe user responses
 
 - `POST /api/admin/users` still requires ADMIN and returns HTTP 200, now with `UserResponse` rather than an entity. Its exact fields are `id`, `username`, `email`, and `role`; passwords and password hashes are absent. Entity-only fields previously serialized by this endpoint are intentionally removed.
-- `GET /api/auth/me` returns HTTP 200 with the same four-field response for any active authenticated role. Identity is resolved from the authenticated principal, never a request-supplied user identifier.
+- `GET /api/auth/me` explicitly requires `@PreAuthorize("isAuthenticated()")`, in addition to the existing global authentication rules. `SecurityConfig` already enables method security with `@EnableMethodSecurity` and is unchanged. The endpoint returns HTTP 200 with the same four-field response for any active authenticated role. Identity is resolved from the authenticated principal, never a request-supplied user identifier.
 - `/api/auth/me` returns 401 for missing/invalid authentication. Existing login URL, request, raw JWT response, one-hour expiry, BCrypt encoding, and existing authorization rules are preserved.
 - The JWT filter checks the current database-backed enabled flag before establishing authentication. Tokens issued before deactivation now receive 401 on subsequent requests. Password login for inactive users remains denied. Existing generic authentication error text is preserved.
 - No refresh, token blacklist, logout, or password-change revocation mechanism is introduced.
@@ -56,7 +56,7 @@ All routes require authentication and return HTTP 200 with a plain array. Empty 
 - Lookup responses omit emails, password hashes, pricing, and full entity details. Quotation customer IDs allow a form to filter options without granting access to quotation pricing.
 - Existing `/api/admin/**`, full crane/customer/quotation lists, and other business permissions are not broadened. Forbidden roles receive 403; anonymous requests receive 401.
 - Use existing permitted `/api/job-card` reads for timesheet job selection. No new job lookup is needed.
-- Lookup arrays are not paginated and have no ordering guarantee. Historical inactive-record selection and changed-role salesperson history remain future requirements, if needed; existing historical report endpoints are unchanged.
+- Lookup arrays are not paginated. The database orders cranes by `craneNumber`, customers by `companyName`, quotations by `quotationNumber`, operators by `operatorName`, and both user lookups by `username`, all ascending with ascending `id` as the tie-breaker. Text ordering uses the database collation. Active flags and sales-role eligibility are filtered in the database. Explicit JPQL constructor projections select only the existing DTO fields; quotation lookup reads the customer foreign-key ID without hydrating the customer entity. Historical inactive-record selection and changed-role salesperson history remain future requirements, if needed; existing historical report endpoints are unchanged.
 
 ## Files changed
 
@@ -67,7 +67,8 @@ Paths below are relative to `src/main/java/com/uvindu/crane_management_system/` 
 - `controller/LookupController.java` (new): explicit per-lookup role authorization.
 - `security/JwtAuthenticationFilter.java`: enabled-account check.
 - `service/UserService.java`: safe registration/current-user mapping and ID.
-- `service/LookupService.java` (new): minimal read-only option projections.
+- `service/LookupService.java` (new): delegates to minimal read-only repository projections.
+- `repository/CraneRepository.java`, `CustomerRepository.java`, `QuotationRepository.java`, `OperatorRepository.java`, `UserRepository.java`: explicit DTO projection queries with database filtering and deterministic ordering.
 - `service/QuotationService.java`, `TimesheetService.java`, `JobCardService.java`, `MaintenanceService.java`, `InvoiceService.java`: additive ID mapping only.
 - `dto/UserResponse.java`, `QuotationResponse.java`, `TimesheetResponse.java`, `JobCardResponse.java`, `MaintenanceResponse.java`, `InvoiceResponse.java`: additive IDs.
 - `dto/LookupResponse.java`, `QuotationLookupResponse.java` (new): minimal lookup records.
@@ -83,9 +84,11 @@ Tests under `src/test/java/com/uvindu/crane_management_system/`:
 ## Regression coverage
 
 - Safe four-field user creation/profile responses, stable IDs, stored BCrypt hash, and absence of plaintext/hash in returned JSON.
+- Direct invocation of the Spring-managed identity controller without a security context is denied, verifying method security independently of the HTTP filter chain.
 - Current-user access for every role; anonymous/invalid tokens rejected; caller cannot select another identity by query parameter; current database role is reflected.
 - Real login token succeeds before deactivation, then fails on identity, business, and lookup routes; password login also fails afterward.
 - Full five-role/six-lookup access matrix, anonymous denial, minimal field sets, inactive-record filtering, and documented assignment eligibility.
+- Lookup ordering is tested with out-of-order insertion, duplicate customer/user names, ID tie-breaks, and mixed active/inactive records. Hibernate statistics verify six populated lookup calls issue six statements and hydrate no entities or relationships.
 - Lookup access does not unlock full admin/business APIs or mutation endpoints.
 - API-returned IDs drive quotation-to-job-to-timesheet create/detail/update/delete requests, without inferring IDs from document numbers.
 - Related IDs and retained labels for job, invoice, and maintenance responses, including nullable assignment cases.
@@ -93,7 +96,7 @@ Tests under `src/test/java/com/uvindu/crane_management_system/`:
 
 ## Validation
 
-Full Maven verification uses the project's existing Testcontainers PostgreSQL configuration, Surefire suite, and unchanged JaCoCo thresholds. The final full run passed: **436 tests, 0 failures, 0 errors, 0 skipped**, including the existing 420 tests and 16 added tests. All JaCoCo checks passed: instruction 97.32%, branch 82.03%, line 98.92%, method 95.39%, and class 100%. Maven exited 0 with `BUILD SUCCESS`.
+Full Maven verification uses the project's existing Testcontainers PostgreSQL configuration, Surefire suite, and unchanged JaCoCo thresholds. The original Phase 0A full run passed: **436 tests, 0 failures, 0 errors, 0 skipped**, including the existing 420 tests and 16 added tests. All JaCoCo checks passed: instruction 97.32%, branch 82.03%, line 98.92%, method 95.39%, and class 100%. Maven exited 0 with `BUILD SUCCESS`.
 
 The first run exposed an older authentication-test cleanup dependency and two new test fixture/assertion issues; these were corrected before rerunning the complete `clean verify` suite. No assertions, tests, or coverage thresholds were disabled. `git diff --check` also passed.
 
@@ -106,6 +109,12 @@ Equivalent full command used here:
 ```
 
 On a normally configured development machine, use `./mvnw clean verify` (Windows: `mvnw.cmd clean verify`).
+
+## PR review follow-up validation
+
+The explicit identity guard and database lookup projections passed the full Maven `clean verify` lifecycle: **441 tests, 0 failures, 0 errors, 0 skipped**, with `BUILD SUCCESS` and exit code 0. Five integration tests were added to the original 436-test suite. Existing anonymous/invalid-token/deactivated-account checks and the five-role/six-lookup permission matrix all passed.
+
+JaCoCo thresholds are unchanged and all passed: instruction 97.27%, branch 81.75%, line 98.91%, method 95.29%, class 100.0%. The lookup projection regression confirms six populated lookups execute six statements with zero entity loads, entity fetches, or collection fetches. `git diff --check` passed.
 
 ## Remaining scope and risks
 
