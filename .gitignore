@@ -1,0 +1,59 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Local secrets and configuration
+application-local.properties
+application-local.yml
+application-local.yaml
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+# Local IDE run configurations containing secrets
+.idea/
+
+# Generated project snapshots and Maven reports
+/codebase_snapshot.md
+/effective-pom.xml
+/effective-pom
+
+# Local project bundling script (review separately)
+/bundle_project.py
