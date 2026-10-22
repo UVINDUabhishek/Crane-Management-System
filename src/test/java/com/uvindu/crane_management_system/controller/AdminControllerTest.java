@@ -6,7 +6,6 @@ import com.uvindu.crane_management_system.dto.CreateUserRequest;
 import com.uvindu.crane_management_system.dto.OperatorResponse;
 import com.uvindu.crane_management_system.dto.UpdateUserRequest;
 import com.uvindu.crane_management_system.dto.UserResponse;
-import com.uvindu.crane_management_system.model.User;
 import com.uvindu.crane_management_system.model.UserRole;
 import com.uvindu.crane_management_system.service.OperatorService;
 import com.uvindu.crane_management_system.service.UserService;
@@ -86,13 +85,13 @@ class AdminControllerTest {
         request.setPassword("password123");
         request.setRole(UserRole.ADMIN);
 
-        User createdUser = new User();
+        UserResponse createdUser = new UserResponse();
 
         when(userService.register(request))
                 .thenReturn(createdUser);
 
         // Act
-        ResponseEntity<User> response =
+        ResponseEntity<UserResponse> response =
                 adminController.createUser(request);
 
         // Assert

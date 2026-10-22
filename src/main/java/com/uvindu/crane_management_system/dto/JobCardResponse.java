@@ -10,6 +10,12 @@ import java.time.LocalDateTime;
 @Data
 public class JobCardResponse {
 
+    private Long customerId;
+    private Long quotationId;
+    private Long craneId;
+    private Long salesPersonId;
+    private Long operatorId;
+
     private Long id;
 
     private String jobCardNumber;

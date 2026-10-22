@@ -182,6 +182,9 @@ public class TimesheetService {
     private TimesheetResponse mapToResponse(Timesheet timesheet) {
 
         TimesheetResponse response = new TimesheetResponse();
+        response.setId(timesheet.getId());
+        response.setJobCardId(timesheet.getJobCard().getId());
+        response.setCustomerId(timesheet.getJobCard().getCustomerId().getId());
 
         response.setTimesheetNumber(timesheet.getTimesheetNumber());
 

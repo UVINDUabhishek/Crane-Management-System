@@ -124,6 +124,8 @@ public class QuotationService {
     private QuotationResponse mapToResponse(Quotation quotation) {
 
         QuotationResponse response = new QuotationResponse();
+        response.setId(quotation.getId());
+        response.setCustomerId(quotation.getCustomerId().getId());
 
         response.setQuotationNumber(quotation.getQuotationNumber());
         response.setCustomerName(quotation.getCustomerId().getCompanyName());

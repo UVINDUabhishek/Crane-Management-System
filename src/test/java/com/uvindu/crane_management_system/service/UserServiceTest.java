@@ -43,7 +43,7 @@ class UserServiceTest extends BaseUnitTest {
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
         // Act
-        User result = userService.register(request);
+        UserResponse result = userService.register(request);
 
         // Assert
         assertThat(result).isNotNull();
@@ -310,5 +310,23 @@ class UserServiceTest extends BaseUnitTest {
                 .hasMessage("Admin account cannot be deactivated");
 
         verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void shouldResolveCurrentUserByAuthenticatedEmail() {
+        User user = UserTestDataBuilder.createUser(42L, UserRole.SALES);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        UserResponse response = userService.getCurrentUser(user.getEmail());
+        assertThat(response.getId()).isEqualTo(42L);
+        assertThat(response.getUsername()).isEqualTo(user.getUsername());
+        assertThat(response.getEmail()).isEqualTo(user.getEmail());
+        assertThat(response.getRole()).isEqualTo(UserRole.SALES);
+    }
+
+    @Test
+    void shouldRejectMissingCurrentUser() {
+        when(userRepository.findByEmail("missing@test.local")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> userService.getCurrentUser("missing@test.local"))
+                .isInstanceOf(org.springframework.security.core.userdetails.UsernameNotFoundException.class);
     }
 }

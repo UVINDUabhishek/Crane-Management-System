@@ -8,6 +8,10 @@ import java.time.LocalDate;
 @Data
 public class TimesheetResponse {
 
+    private Long id;
+    private Long jobCardId;
+    private Long customerId;
+
     private String timesheetNumber;
 
     private String jobCardNumber;
