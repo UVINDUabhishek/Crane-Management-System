@@ -215,10 +215,30 @@ class JwtAuthenticationFilterTest extends BaseUnitTest {
         when(request.getHeader("Authorization")).thenReturn(authHeader);
         when(jwtService.extractUsername(token)).thenReturn("test@example.com");
 
+        when(userDetailsService.loadUserByUsername(anyString()))
+                .thenReturn(JwtTestUtil.createTestUserDetails("test@example.com", UserRole.ADMIN));
+
         // Act
         jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
 
         // Assert
         verify(jwtService).extractUsername(token);
+    }
+
+    @Test
+    void shouldRejectDisabledUserBeforeAuthenticating() throws Exception {
+        SecurityContextHolder.clearContext();
+        UserDetails disabled = org.springframework.security.core.userdetails.User
+                .withUsername("disabled@test.local").password("encoded").roles("SALES").disabled(true).build();
+        when(request.getHeader("Authorization")).thenReturn("Bearer existing-token");
+        when(jwtService.extractUsername("existing-token")).thenReturn(disabled.getUsername());
+        when(userDetailsService.loadUserByUsername(disabled.getUsername())).thenReturn(disabled);
+
+        jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
+
+        verify(response).sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired JWT");
+        verifyNoInteractions(filterChain);
+        verify(jwtService, never()).isTokenValid(anyString(), any());
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 }

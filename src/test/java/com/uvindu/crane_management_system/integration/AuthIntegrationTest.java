@@ -32,10 +32,14 @@ class AuthIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @BeforeEach
     void setUp() {
 
-        userRepository.deleteAll();
+        // Same isolated Testcontainers reset as AbstractIntegrationTest; avoid test-order FK failures.
+        jdbcTemplate.execute("TRUNCATE TABLE users, cranes, customers, quotations RESTART IDENTITY CASCADE");
 
         User admin = new User();
 

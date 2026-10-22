@@ -1,7 +1,6 @@
 package com.uvindu.crane_management_system.controller;
 
 import com.uvindu.crane_management_system.dto.*;
-import com.uvindu.crane_management_system.model.User;
 import com.uvindu.crane_management_system.service.OperatorService;
 import com.uvindu.crane_management_system.service.UserService;
 import jakarta.validation.Valid;
@@ -34,7 +33,7 @@ public class AdminController {
 
     // Create a User
     @PostMapping("/users")
-    public ResponseEntity<User> createUser(@RequestBody CreateUserRequest request) {
+    public ResponseEntity<UserResponse> createUser(@RequestBody CreateUserRequest request) {
 
         return ResponseEntity.ok(userService.register(request));
 

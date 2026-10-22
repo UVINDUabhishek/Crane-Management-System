@@ -282,6 +282,10 @@ public class InvoiceService {
     private InvoiceResponse mapToResponse(Invoice invoice) {
 
         InvoiceResponse response = new InvoiceResponse();
+        response.setCustomerId(invoice.getCustomer().getId());
+        response.setCraneId(invoice.getCrane().getId());
+        response.setQuotationId(invoice.getQuotation().getId());
+        response.setJobCardId(invoice.getJobCard().getId());
 
         response.setId(invoice.getId());
         response.setInvoiceNumber(invoice.getInvoiceNumber());

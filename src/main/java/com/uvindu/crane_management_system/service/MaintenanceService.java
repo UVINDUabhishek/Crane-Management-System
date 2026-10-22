@@ -143,6 +143,7 @@ public class MaintenanceService {
     private MaintenanceResponse mapToResponse(Maintenance maintenance) {
 
         MaintenanceResponse response = new MaintenanceResponse();
+        response.setCraneId(maintenance.getCrane().getId());
 
         response.setId(maintenance.getId());
         response.setMaintenanceNumber(maintenance.getMaintenanceNumber());
@@ -154,6 +155,7 @@ public class MaintenanceService {
         response.setDescription(maintenance.getDescription());
 
         if (maintenance.getMaintenancePerson() != null) {
+            response.setMaintenancePersonId(maintenance.getMaintenancePerson().getId());
             response.setMaintenancePerson(
                     maintenance.getMaintenancePerson().getUsername()
             );

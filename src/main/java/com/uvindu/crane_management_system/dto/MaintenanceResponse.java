@@ -9,6 +9,9 @@ import java.time.LocalDate;
 @Data
 public class MaintenanceResponse {
 
+    private Long craneId;
+    private Long maintenancePersonId;
+
     private Long id;
 
     private String maintenanceNumber;

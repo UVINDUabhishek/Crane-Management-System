@@ -27,6 +27,9 @@ class AuthControllerTest {
     private JwtService jwtService;
 
     @Mock
+    private com.uvindu.crane_management_system.service.UserService userService;
+
+    @Mock
     private Authentication authentication;
 
     @InjectMocks
@@ -104,5 +107,17 @@ class AuthControllerTest {
 
         // JWT must never be generated when authentication fails
         verify(jwtService, never()).generateToken(anyString());
+    }
+
+    @Test
+    void shouldReturnAuthenticatedUserProfile() {
+        var profile = new com.uvindu.crane_management_system.dto.UserResponse();
+        profile.setId(42L);
+        when(authentication.getName()).thenReturn("sales@test.local");
+        when(userService.getCurrentUser("sales@test.local")).thenReturn(profile);
+        var response = authController.me(authentication);
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).isSameAs(profile);
+        verify(userService).getCurrentUser("sales@test.local");
     }
 }

@@ -8,6 +8,9 @@ import java.time.LocalDate;
 @Data
 public class QuotationResponse {
 
+    private Long id;
+    private Long customerId;
+
     private String quotationNumber;
 
     private String customerName;

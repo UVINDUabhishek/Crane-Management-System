@@ -355,6 +355,10 @@ public class JobCardService {
     private JobCardResponse mapToResponse(JobCard jobCard) {
 
         JobCardResponse response = new JobCardResponse();
+        response.setCustomerId(jobCard.getCustomerId().getId());
+        response.setQuotationId(jobCard.getQuotationId().getId());
+        response.setCraneId(jobCard.getCraneId().getId());
+        response.setSalesPersonId(jobCard.getSalesPersonId().getId());
 
         response.setId(jobCard.getId());
         response.setJobCardNumber(jobCard.getJobCardNumber());
@@ -363,6 +367,7 @@ public class JobCardService {
         response.setCrane(jobCard.getCraneId().getCraneNumber());
         response.setSalesPerson(jobCard.getSalesPersonId().getUsername());
         if (jobCard.getOperatorId() != null) {
+            response.setOperatorId(jobCard.getOperatorId().getId());
             response.setOperator(jobCard.getOperatorId().getOperatorName());
         }
         response.setJobDate(jobCard.getJobDate());

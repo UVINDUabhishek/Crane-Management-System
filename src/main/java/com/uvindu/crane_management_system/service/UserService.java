@@ -22,7 +22,7 @@ public class UserService {
     }
 
     // Register a User
-    public User register(CreateUserRequest request) {
+    public UserResponse register(CreateUserRequest request) {
 
         User user = new User();
 
@@ -36,7 +36,7 @@ public class UserService {
 
         user.setRole(request.getRole());
 
-        return userRepository.save(user);
+        return mapToResponse(userRepository.save(user));
     }
 
     // Change Admin password
@@ -72,6 +72,12 @@ public class UserService {
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    public UserResponse getCurrentUser(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("User not found"));
+        return mapToResponse(user);
     }
 
     // Get user by ID
@@ -120,6 +126,7 @@ public class UserService {
     private UserResponse mapToResponse(User user) {
 
         UserResponse response = new UserResponse();
+        response.setId(user.getId());
 
         response.setUsername(user.getUsername());
         response.setEmail(user.getEmail());

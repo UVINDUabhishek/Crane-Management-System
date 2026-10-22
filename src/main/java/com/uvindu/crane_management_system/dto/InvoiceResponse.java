@@ -9,6 +9,11 @@ import java.time.LocalDate;
 @Data
 public class InvoiceResponse {
 
+    private Long customerId;
+    private Long craneId;
+    private Long quotationId;
+    private Long jobCardId;
+
     private Long id;
 
     private String invoiceNumber;
