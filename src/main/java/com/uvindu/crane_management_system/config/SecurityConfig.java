@@ -1,6 +1,7 @@
 package com.uvindu.crane_management_system.config;
 
 import com.uvindu.crane_management_system.security.JwtAuthenticationFilter;
+import com.uvindu.crane_management_system.exception.ApiProblems;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -48,15 +49,11 @@ public class SecurityConfig {
 
                         // User is not authenticated -> 401
                         .authenticationEntryPoint((request, response, authException) ->
-                                response.setStatus(
-                                        HttpStatus.UNAUTHORIZED.value()
-                                ))
+                                ApiProblems.write(request, response, HttpStatus.UNAUTHORIZED))
 
                         // User is authenticated but lacks permission -> 403
                         .accessDeniedHandler((request, response, accessDeniedException) ->
-                                response.setStatus(
-                                        HttpStatus.FORBIDDEN.value()
-                                ))
+                                ApiProblems.write(request, response, HttpStatus.FORBIDDEN))
                 )
 
                 // JWT authentication is stateless

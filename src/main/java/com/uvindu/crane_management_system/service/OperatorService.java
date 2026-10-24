@@ -1,5 +1,6 @@
 package com.uvindu.crane_management_system.service;
 
+import com.uvindu.crane_management_system.exception.BusinessException;
 import com.uvindu.crane_management_system.dto.CreateOperatorRequest;
 import com.uvindu.crane_management_system.dto.OperatorResponse;
 import com.uvindu.crane_management_system.model.Operator;
@@ -44,7 +45,7 @@ public class OperatorService {
 
         Operator operator = operatorRepository.findById(id)
                 .orElseThrow(()->
-                        new RuntimeException("Operator not found"));
+                        BusinessException.notFound("Operator not found"));
 
         return mapToResponse(operator);
     }
@@ -54,7 +55,7 @@ public class OperatorService {
 
         Operator operator = operatorRepository.findById(id)
                         .orElseThrow(()->
-                                new RuntimeException("Operator not found"));
+                                BusinessException.notFound("Operator not found"));
 
         operatorRepository.delete(operator);
     }

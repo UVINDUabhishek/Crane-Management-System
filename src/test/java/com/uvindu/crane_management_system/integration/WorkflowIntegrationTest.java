@@ -5,7 +5,6 @@ import com.uvindu.crane_management_system.model.*;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -33,9 +32,9 @@ class WorkflowIntegrationTest extends AbstractIntegrationTest {
     @Test void completingJobWithoutTimesheetsDoesNotCreateInvoice() throws Exception {
         JobCard job = fixtures.fixtureJobCard();
         // The current controller has no exception mapper for this business exception.
-        assertThatThrownBy(() -> mockMvc.perform(
-                authorized(patch("/api/job-card/{id}/complete", job.getId()))))
-                .hasRootCauseMessage("Job card cannot be completed without timesheets");
+        mockMvc.perform(
+                authorized(patch("/api/job-card/{id}/complete", job.getId())))
+                .andExpect(status().isConflict());
         assertThat(invoiceRepository.count()).isZero();
         assertThat(jobCardRepository.findById(job.getId()).orElseThrow().getStatus())
                 .isEqualTo(JobCardStatus.PENDING);

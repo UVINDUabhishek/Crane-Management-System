@@ -68,6 +68,9 @@ class JobCardServiceTest extends BaseUnitTest {
     @Mock
     private TimesheetRepository timesheetRepository;
 
+    @Mock
+    private SchedulingService schedulingService;
+
     @InjectMocks
     private JobCardService jobCardService;
 
@@ -97,11 +100,16 @@ class JobCardServiceTest extends BaseUnitTest {
         Quotation quotation = new Quotation();
         quotation.setId(1L);
         quotation.setQuotationNumber("QT-0001");
+        quotation.setCustomerId(customer);
+        quotation.setType("001");
+        quotation.setValidFrom(LocalDate.of(2020, 1, 1));
+        quotation.setValidTo(LocalDate.of(2030, 12, 31));
 
         Crane crane = new Crane();
         crane.setId(1L);
         crane.setCraneNumber("CRMOBILE001");
         crane.setStatus(CraneStatus.AVAILABLE);
+        crane.setType("001");
 
         Operator operator = new Operator();
         operator.setId(1L);
@@ -366,49 +374,13 @@ class JobCardServiceTest extends BaseUnitTest {
     @Test
     void shouldThrowExceptionWhenEndDateIsBeforeStartDate() {
 
-        // Arrange
-        mockAuthenticatedSalesUser();
-
-        Customer customer = new Customer();
-        customer.setId(1L);
-
-        Quotation quotation = new Quotation();
-        quotation.setId(1L);
-
-        Crane crane = new Crane();
-        crane.setId(1L);
-        crane.setStatus(CraneStatus.AVAILABLE);
-
-        Operator operator = new Operator();
-        operator.setId(1L);
-
-        User salesPerson = new User();
-        salesPerson.setId(1L);
-        salesPerson.setEmail("sales@example.com");
-
         CreateJobCardRequest request = JobCardTestDataBuilder.createJobCardRequest();
         request.setStartDate(LocalDate.now().plusDays(5));
         request.setEndDate(LocalDate.now());
-
-        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
-        when(quotationRepository.findById(1L)).thenReturn(Optional.of(quotation));
-        when(craneRepository.findById(1L)).thenReturn(Optional.of(crane));
-        when(operatorRepository.findById(1L)).thenReturn(Optional.of(operator));
-        when(userRepository.findByEmail(any())).thenReturn(Optional.of(salesPerson));
-        when(maintenanceService.isCraneUnderMaintenance(any(), any(), any())).thenReturn(false);
-
-        // Act & Assert
         assertThatThrownBy(() -> jobCardService.createJobCard(request))
-                .isInstanceOfSatisfying(
-                        ResponseStatusException.class,
-                        exception -> {
-                            assertThat(exception.getStatusCode())
-                                    .isEqualTo(HttpStatus.BAD_REQUEST);
-
-                            assertThat(exception.getReason())
-                                    .isEqualTo("End date cannot be before start date");
-                        }
-                );
+                .isInstanceOfSatisfying(com.uvindu.crane_management_system.exception.BusinessException.class,
+                        error -> assertThat(error.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST));
+        verifyNoInteractions(schedulingService, customerRepository, craneRepository);
 
         verify(jobCardRepository, never()).save(any(JobCard.class));
     }
@@ -595,7 +567,7 @@ class JobCardServiceTest extends BaseUnitTest {
 
         InvoiceResponse invoiceResponse = new InvoiceResponse();
 
-        when(jobCardRepository.findById(1L))
+        when(jobCardRepository.findByIdForUpdate(1L))
                 .thenReturn(Optional.of(jobCard));
 
         when(timesheetRepository.findByJobCard(jobCard))
@@ -656,7 +628,7 @@ class JobCardServiceTest extends BaseUnitTest {
     void shouldThrowExceptionWhenCompletingNonExistentJobCard() {
 
         // Arrange
-        when(jobCardRepository.findById(999L))
+        when(jobCardRepository.findByIdForUpdate(999L))
                 .thenReturn(Optional.empty());
 
         // Act & Assert
@@ -684,7 +656,7 @@ class JobCardServiceTest extends BaseUnitTest {
                         JobCardStatus.COMPLETED
                 );
 
-        when(jobCardRepository.findById(1L))
+        when(jobCardRepository.findByIdForUpdate(1L))
                 .thenReturn(Optional.of(jobCard));
 
         // Act & Assert
@@ -720,7 +692,7 @@ class JobCardServiceTest extends BaseUnitTest {
                         JobCardStatus.CANCELED
                 );
 
-        when(jobCardRepository.findById(1L))
+        when(jobCardRepository.findByIdForUpdate(1L))
                 .thenReturn(Optional.of(jobCard));
 
         // Act & Assert
@@ -756,7 +728,7 @@ class JobCardServiceTest extends BaseUnitTest {
                         JobCardStatus.PENDING
                 );
 
-        when(jobCardRepository.findById(1L))
+        when(jobCardRepository.findByIdForUpdate(1L))
                 .thenReturn(Optional.of(jobCard));
 
         when(timesheetRepository.findByJobCard(jobCard))
@@ -803,7 +775,7 @@ class JobCardServiceTest extends BaseUnitTest {
         timesheet.setJobCard(jobCard);
         timesheet.setWorkedHours(new BigDecimal("8"));
 
-        when(jobCardRepository.findById(1L))
+        when(jobCardRepository.findByIdForUpdate(1L))
                 .thenReturn(Optional.of(jobCard));
 
         when(timesheetRepository.findByJobCard(jobCard))
@@ -864,7 +836,7 @@ class JobCardServiceTest extends BaseUnitTest {
         jobCard.setSalesPersonId(salesPerson);
         jobCard.setCraneId(crane);
 
-        when(jobCardRepository.findById(1L))
+        when(jobCardRepository.findByIdForUpdate(1L))
                 .thenReturn(Optional.of(jobCard));
 
         when(jobCardRepository.save(any(JobCard.class)))
@@ -901,7 +873,7 @@ class JobCardServiceTest extends BaseUnitTest {
     void shouldThrowExceptionWhenCancellingNonExistentJobCard() {
 
         // Arrange
-        when(jobCardRepository.findById(999L))
+        when(jobCardRepository.findByIdForUpdate(999L))
                 .thenReturn(Optional.empty());
 
         // Act & Assert
@@ -922,7 +894,7 @@ class JobCardServiceTest extends BaseUnitTest {
 
         // Arrange
         JobCard jobCard = JobCardTestDataBuilder.createJobCard(1L, "JC-0001", JobCardStatus.COMPLETED);
-        when(jobCardRepository.findById(1L)).thenReturn(Optional.of(jobCard));
+        when(jobCardRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(jobCard));
 
         // Act & Assert
         assertThatThrownBy(() -> jobCardService.cancelJobCard(1L))
@@ -941,7 +913,7 @@ class JobCardServiceTest extends BaseUnitTest {
 
         // Arrange
         JobCard jobCard = JobCardTestDataBuilder.createJobCard(1L, "JC-0001", JobCardStatus.CANCELED);
-        when(jobCardRepository.findById(1L)).thenReturn(Optional.of(jobCard));
+        when(jobCardRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(jobCard));
 
         // Act & Assert
         assertThatThrownBy(() -> jobCardService.cancelJobCard(1L))
@@ -962,7 +934,13 @@ class JobCardServiceTest extends BaseUnitTest {
         Crane original = job.getCraneId();
         Crane replacement = updateCrane(2L, CraneStatus.AVAILABLE);
         UpdateJobCardRequest request = updateRequest(job, replacement.getId());
-        when(jobCardRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        when(jobCardRepository.findByIdForUpdate(job.getId())).thenReturn(Optional.of(job));
+        if (status != JobCardStatus.PENDING) {
+            assertThatThrownBy(() -> jobCardService.updateJobCard(job.getId(), request))
+                    .hasMessage("Only pending job cards can be updated");
+            verify(jobCardRepository, never()).save(any());
+            return;
+        }
         when(craneRepository.findById(replacement.getId())).thenReturn(Optional.of(replacement));
         when(jobCardRepository.save(any(JobCard.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -986,7 +964,7 @@ class JobCardServiceTest extends BaseUnitTest {
         JobCard job = updateFixture(JobCardStatus.PENDING);
         Crane original = job.getCraneId();
         Crane replacement = updateCrane(2L, status);
-        when(jobCardRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        when(jobCardRepository.findByIdForUpdate(job.getId())).thenReturn(Optional.of(job));
         when(craneRepository.findById(replacement.getId())).thenReturn(Optional.of(replacement));
 
         assertThatThrownBy(() -> jobCardService.updateJobCard(job.getId(), updateRequest(job, replacement.getId())))
@@ -1002,7 +980,7 @@ class JobCardServiceTest extends BaseUnitTest {
         Crane original = job.getCraneId();
         Crane replacement = updateCrane(2L, CraneStatus.AVAILABLE);
         UpdateJobCardRequest request = updateRequest(job, replacement.getId());
-        when(jobCardRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        when(jobCardRepository.findByIdForUpdate(job.getId())).thenReturn(Optional.of(job));
         when(craneRepository.findById(replacement.getId())).thenReturn(Optional.of(replacement));
         when(maintenanceService.isCraneUnderMaintenance(replacement.getId(), request.getStartDate(), request.getEndDate()))
                 .thenReturn(true);
@@ -1015,8 +993,15 @@ class JobCardServiceTest extends BaseUnitTest {
 
     private JobCard updateFixture(JobCardStatus status) {
         JobCard job = JobCardTestDataBuilder.createJobCard(1L, "JC-0001", status);
-        job.setCustomerId(new Customer());
-        job.setQuotationId(new Quotation());
+        Customer customer = new Customer();
+        customer.setId(1L);
+        job.setCustomerId(customer);
+        Quotation quote = new Quotation();
+        quote.setCustomerId(customer);
+        quote.setType("001");
+        quote.setValidFrom(LocalDate.of(2020, 1, 1));
+        quote.setValidTo(LocalDate.of(2030, 12, 31));
+        job.setQuotationId(quote);
         job.setSalesPersonId(new User());
         job.setCraneId(updateCrane(1L, CraneStatus.AVAILABLE));
         return job;
@@ -1026,6 +1011,7 @@ class JobCardServiceTest extends BaseUnitTest {
         Crane crane = new Crane();
         crane.setId(id);
         crane.setCraneNumber("CR-" + id);
+        crane.setType("001");
         crane.setStatus(status);
         return crane;
     }

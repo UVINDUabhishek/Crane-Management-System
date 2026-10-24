@@ -1,5 +1,6 @@
 package com.uvindu.crane_management_system.service;
 
+import com.uvindu.crane_management_system.exception.BusinessException;
 import com.uvindu.crane_management_system.dto.CreateMaintenanceRequest;
 import com.uvindu.crane_management_system.dto.MaintenanceResponse;
 import com.uvindu.crane_management_system.dto.UpdateMaintenanceRequest;
@@ -13,6 +14,7 @@ import com.uvindu.crane_management_system.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,12 +25,14 @@ public class MaintenanceService {
     private final CraneRepository craneRepository;
     private final UserRepository userRepository;
     private final CraneService craneService;
+    private final SchedulingService schedulingService;
 
     public MaintenanceService(
             MaintenanceRepository maintenanceRepository,
             CraneRepository craneRepository,
             UserRepository userRepository,
-            CraneService craneService) {
+            CraneService craneService, SchedulingService schedulingService) {
+        this.schedulingService = schedulingService;
 
         this.maintenanceRepository = maintenanceRepository;
         this.craneRepository = craneRepository;
@@ -38,16 +42,22 @@ public class MaintenanceService {
 
 
     // Create Maintenance
+    @Transactional
     public MaintenanceResponse createMaintenance(CreateMaintenanceRequest request) {
 
+        SchedulingService.validateDates(request.getMaintenanceStartDate(), request.getMaintenanceEndDate());
+        schedulingService.lockCranes(request.getCraneId());
+        schedulingService.rejectBookingConflict(request.getCraneId(), request.getMaintenanceStartDate(),
+                request.getMaintenanceEndDate(), null);
+
         Crane crane = craneRepository.findById(request.getCraneId())
-                .orElseThrow(() -> new RuntimeException("Crane not found"));
+                .orElseThrow(() -> BusinessException.notFound("Crane not found"));
 
         User maintenancePerson = null;
 
         if (request.getMaintenancePersonId() != null) {
             maintenancePerson = userRepository.findById(request.getMaintenancePersonId())
-                    .orElseThrow(() -> new RuntimeException("Maintenance person not found"));
+                    .orElseThrow(() -> BusinessException.notFound("Maintenance person not found"));
         }
 
         Maintenance maintenance = new Maintenance();
@@ -98,22 +108,32 @@ public class MaintenanceService {
     public MaintenanceResponse getMaintenanceById(Long id) {
 
         Maintenance maintenance = maintenanceRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Maintenance not found"));
+                .orElseThrow(() -> BusinessException.notFound("Maintenance not found"));
 
         return mapToResponse(maintenance);
     }
 
 
     // Update Maintenance
+    @Transactional
     public MaintenanceResponse updateMaintenance(
             Long id,
             UpdateMaintenanceRequest request) {
 
-        Maintenance maintenance = maintenanceRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Maintenance not found"));
+        Maintenance maintenance = maintenanceRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> BusinessException.notFound("Maintenance not found"));
+
+        SchedulingService.validateDates(request.getMaintenanceStartDate(), request.getMaintenanceEndDate());
+        Long previousCraneId = maintenance.getCrane().getId();
+        schedulingService.lockCranes(previousCraneId, request.getCraneId());
+        if (maintenance.getStatus() == MaintenanceStatus.SCHEDULED
+                || maintenance.getStatus() == MaintenanceStatus.IN_PROGRESS) {
+            schedulingService.rejectBookingConflict(request.getCraneId(), request.getMaintenanceStartDate(),
+                    request.getMaintenanceEndDate(), null);
+        }
 
         Crane crane = craneRepository.findById(request.getCraneId())
-                .orElseThrow(() -> new RuntimeException("Crane not found"));
+                .orElseThrow(() -> BusinessException.notFound("Crane not found"));
 
         maintenance.setCrane(crane);
         maintenance.setMaintenanceStartDate(request.getMaintenanceStartDate());
@@ -126,7 +146,7 @@ public class MaintenanceService {
             User maintenancePerson = userRepository.findById(
                     request.getMaintenancePersonId()
             ).orElseThrow(() ->
-                    new RuntimeException("Maintenance person not found"));
+                    BusinessException.notFound("Maintenance person not found"));
 
             maintenance.setMaintenancePerson(maintenancePerson);
         } else {
@@ -134,6 +154,12 @@ public class MaintenanceService {
         }
 
         Maintenance updatedMaintenance = maintenanceRepository.save(maintenance);
+        if (maintenance.getStatus() == MaintenanceStatus.IN_PROGRESS) {
+            craneService.markAsMaintenance(crane.getId());
+            if (!previousCraneId.equals(crane.getId())) {
+                craneService.markAsAvailable(previousCraneId);
+            }
+        }
 
         return mapToResponse(updatedMaintenance);
     }
@@ -168,23 +194,27 @@ public class MaintenanceService {
 
 
     // Start Maintenance
+    @Transactional
     public MaintenanceResponse startMaintenance(Long id) {
 
-        Maintenance maintenance = maintenanceRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Maintenance not found"));
+        Maintenance maintenance = maintenanceRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> BusinessException.notFound("Maintenance not found"));
 
         if (maintenance.getStatus() == MaintenanceStatus.COMPLETED) {
-            throw new RuntimeException("Completed maintenance cannot be started");
+            throw BusinessException.conflict("Completed maintenance cannot be started");
         }
 
         if (maintenance.getStatus() == MaintenanceStatus.CANCELED) {
-            throw new RuntimeException("Canceled maintenance cannot be started");
+            throw BusinessException.conflict("Canceled maintenance cannot be started");
         }
 
         if (maintenance.getStatus() == MaintenanceStatus.IN_PROGRESS) {
-            throw new RuntimeException("Maintenance is already in progress");
+            throw BusinessException.conflict("Maintenance is already in progress");
         }
 
+        schedulingService.lockCranes(maintenance.getCrane().getId());
+        schedulingService.rejectBookingConflict(maintenance.getCrane().getId(),
+                maintenance.getMaintenanceStartDate(), maintenance.getMaintenanceEndDate(), null);
         maintenance.setStatus(MaintenanceStatus.IN_PROGRESS);
 
         craneService.markAsMaintenance(
@@ -196,19 +226,21 @@ public class MaintenanceService {
 
 
     // Complete Maintenance
+    @Transactional
     public MaintenanceResponse completeMaintenance(Long id) {
 
-        Maintenance maintenance = maintenanceRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Maintenance not found"));
+        Maintenance maintenance = maintenanceRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> BusinessException.notFound("Maintenance not found"));
 
         if (maintenance.getStatus() == MaintenanceStatus.COMPLETED) {
-            throw new RuntimeException("Maintenance is already completed");
+            throw BusinessException.conflict("Maintenance is already completed");
         }
 
         if (maintenance.getStatus() == MaintenanceStatus.CANCELED) {
-            throw new RuntimeException("Canceled maintenance cannot be completed");
+            throw BusinessException.conflict("Canceled maintenance cannot be completed");
         }
 
+        schedulingService.lockCranes(maintenance.getCrane().getId());
         maintenance.setStatus(MaintenanceStatus.COMPLETED);
 
         craneService.markAsAvailable(
@@ -220,19 +252,21 @@ public class MaintenanceService {
 
 
     // Cancel Maintenance
+    @Transactional
     public MaintenanceResponse cancelMaintenance(Long id) {
 
-        Maintenance maintenance = maintenanceRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Maintenance not found"));
+        Maintenance maintenance = maintenanceRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> BusinessException.notFound("Maintenance not found"));
 
         if (maintenance.getStatus() == MaintenanceStatus.COMPLETED) {
-            throw new RuntimeException("Completed maintenance cannot be canceled");
+            throw BusinessException.conflict("Completed maintenance cannot be canceled");
         }
 
         if (maintenance.getStatus() == MaintenanceStatus.CANCELED) {
-            throw new RuntimeException("Maintenance is already canceled");
+            throw BusinessException.conflict("Maintenance is already canceled");
         }
 
+        schedulingService.lockCranes(maintenance.getCrane().getId());
         maintenance.setStatus(MaintenanceStatus.CANCELED);
 
         craneService.markAsAvailable(

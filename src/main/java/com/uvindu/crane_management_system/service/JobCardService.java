@@ -1,5 +1,6 @@
 package com.uvindu.crane_management_system.service;
 
+import com.uvindu.crane_management_system.exception.BusinessException;
 import com.uvindu.crane_management_system.dto.CreateJobCardRequest;
 import com.uvindu.crane_management_system.dto.JobCardResponse;
 import com.uvindu.crane_management_system.dto.UpdateJobCardRequest;
@@ -11,8 +12,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -33,6 +32,7 @@ public class JobCardService {
     private final CraneService craneService;
     private final InvoiceService invoiceService;
     private final TimesheetRepository timesheetRepository;
+    private final SchedulingService schedulingService;
 
     public JobCardService(
             JobCardRepository jobCardRepository,
@@ -44,7 +44,8 @@ public class JobCardService {
             MaintenanceService maintenanceService,
             CraneService craneService,
             InvoiceService invoiceService,
-            TimesheetRepository timesheetRepository) {
+            TimesheetRepository timesheetRepository, SchedulingService schedulingService) {
+        this.schedulingService = schedulingService;
         this.jobCardRepository = jobCardRepository;
         this.customerRepository = customerRepository;
         this.quotationRepository = quotationRepository;
@@ -58,22 +59,24 @@ public class JobCardService {
     }
 
     // Create Job-card
+    @Transactional
     public JobCardResponse createJobCard(CreateJobCardRequest request) {
 
+        SchedulingService.validateDates(request.getStartDate(), request.getEndDate());
+        schedulingService.lockCranes(request.getCraneId());
+
         Customer customer = customerRepository.findById(request.getCustomerId())
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
+                .orElseThrow(() -> BusinessException.notFound("Customer not found"));
 
         Quotation quotation = quotationRepository.findById(request.getQuotationId())
-                .orElseThrow(() -> new RuntimeException("Quotation not found"));
+                .orElseThrow(() -> BusinessException.notFound("Quotation not found"));
 
         Crane crane = craneRepository.findById(request.getCraneId())
-                .orElseThrow(() -> new RuntimeException("Crane not found"));
+                .orElseThrow(() -> BusinessException.notFound("Crane not found"));
 
         // crane availability check
         if (crane.getStatus() != CraneStatus.AVAILABLE) {
-            throw new RuntimeException(
-                    "Crane is not available"
-            );
+            throw BusinessException.conflict("Crane is not available");
         }
 
         if (maintenanceService.isCraneUnderMaintenance(
@@ -81,16 +84,15 @@ public class JobCardService {
                 request.getStartDate(),
                 request.getEndDate())) {
 
-            throw new RuntimeException(
-                    "Crane is under maintenance during the selected period"
-            );
+            throw new BusinessException(HttpStatus.CONFLICT, "MAINTENANCE_OVERLAP",
+                    "Crane is under maintenance during the selected period");
         }
 
         Operator operator = null;
 
         if (request.getOperatorId() != null) {
             operator = operatorRepository.findById(request.getOperatorId())
-                    .orElseThrow(() -> new RuntimeException("Operator not found"));
+                    .orElseThrow(() -> BusinessException.notFound("Operator not found"));
         }
 
         Authentication authentication =
@@ -99,17 +101,10 @@ public class JobCardService {
         String email = authentication.getName();
 
         User salesPerson = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> BusinessException.notFound("User not found"));
 
-        // Reject an end date earlier than the start date
-        if (request.getEndDate() != null &&
-                request.getEndDate().isBefore(request.getStartDate())) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "End date cannot be before start date"
-            );
-        }
+        validateQuotation(customer, quotation, crane, request.getStartDate(), request.getEndDate());
+        schedulingService.rejectBookingConflict(crane.getId(), request.getStartDate(), request.getEndDate(), null);
 
         JobCard jobCard = new JobCard();
 
@@ -163,23 +158,28 @@ public class JobCardService {
 
         JobCard jobCard = jobCardRepository.findById(id)
                 .orElseThrow(()->
-                        new RuntimeException("Job Card not found"));
+                        BusinessException.notFound("Job Card not found"));
 
         return mapToResponse(jobCard);
     }
 
 
     // Update Job-card
+    @Transactional
     public JobCardResponse updateJobCard(Long id, UpdateJobCardRequest request) {
 
-        JobCard jobCard = jobCardRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Job card not found"));
+        JobCard jobCard = jobCardRepository.findByIdForUpdate(id)
+                .orElseThrow(()-> BusinessException.notFound("Job card not found"));
+
+        if (jobCard.getStatus() != JobCardStatus.PENDING) {
+            throw BusinessException.conflict("Only pending job cards can be updated");
+        }
 
         LocalDate startDate = request.getStartDate() != null
                 ? request.getStartDate()
                 : jobCard.getStartDate();
 
-        LocalDate endDate = request.getEndDate() != null
+        LocalDate endDate = request.isEndDateProvided()
                 ? request.getEndDate()
                 : jobCard.getEndDate();
 
@@ -187,45 +187,33 @@ public class JobCardService {
                 ? request.getCraneId()
                 : jobCard.getCraneId().getId();
 
-        if (endDate != null && endDate.isBefore(startDate)) {
-            throw new RuntimeException("End date cannot be before start date");
-        }
+        SchedulingService.validateDates(startDate, endDate);
+        schedulingService.lockCranes(jobCard.getCraneId().getId(), craneId);
 
         Crane crane = craneRepository.findById(craneId)
-                .orElseThrow(() -> new RuntimeException("Crane not found"));
+                .orElseThrow(() -> BusinessException.notFound("Crane not found"));
 
         if (crane.getStatus() != CraneStatus.AVAILABLE) {
-            throw new RuntimeException("Crane is not available");
+            throw BusinessException.conflict("Crane is not available");
         }
 
-        if (startDate != null && endDate != null) {
-
-            if (maintenanceService.isCraneUnderMaintenance(
-                    craneId,
-                    startDate,
-                    endDate)) {
-
-                throw new RuntimeException(
-                        "Crane is under maintenance during the selected period"
-                );
-            }
+        if (maintenanceService.isCraneUnderMaintenance(craneId, startDate, endDate)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "MAINTENANCE_OVERLAP",
+                    "Crane is under maintenance during the selected period");
         }
 
-        // Quotation
-        if(request.getQuotationId() != null) {
-
-            Quotation quotation = quotationRepository.findById(request.getQuotationId())
-                    .orElseThrow(()-> new RuntimeException("Quotation not found"));
-
-                jobCard.setQuotationId(quotation);
-        }
-
+        Quotation quotation = request.getQuotationId() == null ? jobCard.getQuotationId()
+                : quotationRepository.findById(request.getQuotationId())
+                    .orElseThrow(() -> BusinessException.notFound("Quotation not found"));
+        validateQuotation(jobCard.getCustomerId(), quotation, crane, startDate, endDate);
+        schedulingService.rejectBookingConflict(craneId, startDate, endDate, id);
+        jobCard.setQuotationId(quotation);
 
         // Operator
         if(request.getOperatorId() != null) {
 
             Operator operator = operatorRepository.findById(request.getOperatorId())
-                    .orElseThrow(()-> new RuntimeException("Operator not found"));
+                    .orElseThrow(()-> BusinessException.notFound("Operator not found"));
 
             jobCard.setOperatorId(operator);
         }
@@ -246,10 +234,7 @@ public class JobCardService {
             jobCard.setDescription(request.getDescription());
         }
 
-        // Reassign pending jobs after validation; leave terminal-state update behavior unchanged.
-        if (jobCard.getStatus() == JobCardStatus.PENDING) {
-            jobCard.setCraneId(crane);
-        }
+        jobCard.setCraneId(crane);
 
         JobCard updatedJobCard = jobCardRepository.save(jobCard);
 
@@ -262,9 +247,9 @@ public class JobCardService {
     @Transactional
     public JobCardResponse completeJobCard(Long id) {
 
-        JobCard jobCard = jobCardRepository.findById(id)
+        JobCard jobCard = jobCardRepository.findByIdForUpdate(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Job card not found"));
+                        BusinessException.notFound("Job card not found"));
 
         // Only PENDING job cards can be completed
         if (jobCard.getStatus() != JobCardStatus.PENDING) {
@@ -279,18 +264,14 @@ public class JobCardService {
 
         //Timesheet is required before completion
         if(timesheets.isEmpty()) {
-            throw new RuntimeException(
-                    "Job card cannot be completed without timesheets"
-            );
+            throw BusinessException.conflict("Job card cannot be completed without timesheets");
         }
 
         // Minimum daily hours from quotation
         BigDecimal minHours = jobCard.getQuotationId().getMinHours();
 
         if(minHours == null) {
-            throw new RuntimeException(
-                    "Minimum hours are not defined in the quotation"
-            );
+            throw BusinessException.conflict("Minimum hours are not defined in the quotation");
         }
 
         BigDecimal totalWorkedHours = BigDecimal.ZERO;
@@ -308,6 +289,8 @@ public class JobCardService {
             totalBillableHours = totalBillableHours.add(billableHours);
         }
 
+
+        schedulingService.lockCranes(jobCard.getCraneId().getId());
 
         // Store calculated totals on Job-card
         jobCard.setTotalWorkedHours(totalWorkedHours);
@@ -331,19 +314,21 @@ public class JobCardService {
 
 
     // Cancel Job-card
+    @Transactional
     public JobCardResponse cancelJobCard(Long id) {
 
-        JobCard jobCard = jobCardRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Job card not found"));
+        JobCard jobCard = jobCardRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> BusinessException.notFound("Job card not found"));
 
         if (jobCard.getStatus() == JobCardStatus.COMPLETED) {
-            throw new RuntimeException("Completed job card cannot be cancelled");
+            throw BusinessException.conflict("Completed job card cannot be cancelled");
         }
 
         if (jobCard.getStatus() == JobCardStatus.CANCELED) {
-            throw new RuntimeException("Job card is already cancelled");
+            throw BusinessException.conflict("Job card is already cancelled");
         }
 
+        schedulingService.lockCranes(jobCard.getCraneId().getId());
         jobCard.setStatus(JobCardStatus.CANCELED);
 
         craneService.markAsAvailable(
@@ -355,6 +340,25 @@ public class JobCardService {
         return mapToResponse(canceledJobCard);
     }
 
+
+    private void validateQuotation(Customer customer, Quotation quotation, Crane crane,
+                                   LocalDate start, LocalDate end) {
+        if (!customer.isActive() || !quotation.isActive() || !crane.isActive()) {
+            throw BusinessException.conflict("Customer, quotation and crane must be active");
+        }
+        if (!customer.getId().equals(quotation.getCustomerId().getId())) {
+            throw BusinessException.invalid("Quotation must belong to the job customer");
+        }
+        if (!crane.getType().equals(quotation.getType())) {
+            throw BusinessException.invalid("Crane type must match the quotation type");
+        }
+        // The current quotation API requires a finite validity window. A nullable DB column
+        // alone does not establish an unbounded quotation contract.
+        if (quotation.getValidFrom() == null || quotation.getValidTo() == null || end == null
+                || start.isBefore(quotation.getValidFrom()) || end.isAfter(quotation.getValidTo())) {
+            throw BusinessException.invalid("Job schedule must be entirely within quotation validity");
+        }
+    }
 
     // Mapping Method
     private JobCardResponse mapToResponse(JobCard jobCard) {

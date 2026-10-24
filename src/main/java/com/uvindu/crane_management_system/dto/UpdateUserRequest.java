@@ -4,6 +4,7 @@ import com.uvindu.crane_management_system.model.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+import jakarta.validation.constraints.NotNull;
 
 @Data
 public class UpdateUserRequest {
@@ -15,7 +16,7 @@ public class UpdateUserRequest {
     @Email(message = "Correct email is required")
     private String email;
 
-    @NotBlank(message = "User role is required")
+    @NotNull(message = "User role is required")
     private UserRole role;
 
 }

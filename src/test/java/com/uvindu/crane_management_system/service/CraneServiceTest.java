@@ -29,6 +29,9 @@ class CraneServiceTest extends BaseUnitTest {
     @Mock
     private CraneRepository craneRepository;
 
+    @Mock
+    private com.uvindu.crane_management_system.repository.MaintenanceRepository maintenanceRepository;
+
     @InjectMocks
     private CraneService craneService;
 

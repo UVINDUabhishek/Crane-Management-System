@@ -95,15 +95,8 @@ class AuthControllerTest {
                 any(UsernamePasswordAuthenticationToken.class)
         )).thenThrow(new BadCredentialsException("Invalid credentials"));
 
-        // Act
-        ResponseEntity<?> response = authController.login(request);
-
-        // Assert
-        assertThat(response.getStatusCode())
-                .isEqualTo(HttpStatus.UNAUTHORIZED);
-
-        assertThat(response.getBody())
-                .isEqualTo("Invalid email or password");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> authController.login(request))
+                .isInstanceOf(BadCredentialsException.class);
 
         // JWT must never be generated when authentication fails
         verify(jwtService, never()).generateToken(anyString());

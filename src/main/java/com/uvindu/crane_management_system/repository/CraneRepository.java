@@ -14,6 +14,10 @@ import java.util.Optional;
 @Repository
 public interface CraneRepository extends JpaRepository<Crane, Long> {
 
+    @Query(value = "select * from cranes where id = :id for update", nativeQuery = true)
+    Optional<Crane> findByIdForUpdate(@org.springframework.data.repository.query.Param("id") Long id);
+
+
     // Check for duplicates before creating one
     boolean existsBySerialNumber(String serialNumber);
 

@@ -26,6 +26,7 @@ public class CreateMaintenanceRequest {
     @NotBlank(message = "Description is required")
     private String description;
 
+    @Positive
     private Long maintenancePersonId;
 
 }

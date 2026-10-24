@@ -1,5 +1,6 @@
 package com.uvindu.crane_management_system.service;
 
+import com.uvindu.crane_management_system.exception.BusinessException;
 import com.uvindu.crane_management_system.dto.CreateTimesheetRequest;
 import com.uvindu.crane_management_system.dto.TimesheetResponse;
 import com.uvindu.crane_management_system.dto.UpdateTimesheetRequest;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import jakarta.transaction.Transactional;
 import java.util.Optional;
 
 @Service
@@ -28,16 +30,15 @@ public class TimesheetService {
     }
 
     // Create timesheet
+    @Transactional
     public TimesheetResponse createTimesheet(CreateTimesheetRequest request) {
 
-        JobCard jobCard = jobCardRepository.findById(request.getJobCardId())
-                .orElseThrow(()-> new RuntimeException("Job card not found"));
+        JobCard jobCard = jobCardRepository.findByIdForUpdate(request.getJobCardId())
+                .orElseThrow(()-> BusinessException.notFound("Job card not found"));
 
         // A completed or canceled Job-card cannot receive new Timesheets
         if(jobCard.getStatus() != JobCardStatus.PENDING) {
-            throw new RuntimeException(
-                    "Timesheet can only be added to a pending Job Card"
-            );
+            throw BusinessException.conflict("Timesheet can only be added to a pending Job Card");
         }
 
         // Prevent duplicate Timesheet for the same Job Card and date
@@ -95,7 +96,7 @@ public class TimesheetService {
     public TimesheetResponse getTimesheetById(Long id) {
 
         Timesheet timesheet = timesheetRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Timesheet not found"));
+                .orElseThrow(()-> BusinessException.notFound("Timesheet not found"));
 
         return mapToResponse(timesheet);
     }
@@ -104,7 +105,7 @@ public class TimesheetService {
     public List<TimesheetResponse> getTimesheetsByJobCard(Long jobCardId) {
 
         JobCard jobCard = jobCardRepository.findById(jobCardId)
-                .orElseThrow(()-> new RuntimeException("Job card not found"));
+                .orElseThrow(()-> BusinessException.notFound("Job card not found"));
 
         return timesheetRepository.findByJobCard(jobCard)
                 .stream()
@@ -113,18 +114,22 @@ public class TimesheetService {
     }
 
     // Update timesheet
+    @Transactional
     public TimesheetResponse updateTimesheet(Long id, UpdateTimesheetRequest request) {
 
-        Timesheet timesheet = timesheetRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Timesheet not found"));
+        Long jobId = timesheetRepository.findJobCardIdById(id)
+                .orElseThrow(() -> BusinessException.notFound("Timesheet not found"));
+        JobCard jobCard = jobCardRepository.findByIdForUpdate(jobId)
+                .orElseThrow(() -> BusinessException.notFound("Job card not found"));
 
-        JobCard jobCard = timesheet.getJobCard();
+        Timesheet timesheet = timesheetRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("Timesheet not found"));
+
+
 
         // Timesheet can only be updated while Job Card is PENDING
         if (jobCard.getStatus() != JobCardStatus.PENDING) {
-            throw new RuntimeException(
-                    "Timesheet cannot be updated because the Job Card is not pending"
-            );
+            throw BusinessException.conflict("Timesheet cannot be updated because the Job Card is not pending");
         }
 
         if(request.getDateOfWork() != null) {
@@ -162,17 +167,21 @@ public class TimesheetService {
 
 
     // Delete timesheet
+    @Transactional
     public void deleteTimesheet(Long id) {
 
-        Timesheet timesheet = timesheetRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Timesheet not found"));
+        Long jobId = timesheetRepository.findJobCardIdById(id)
+                .orElseThrow(() -> BusinessException.notFound("Timesheet not found"));
+        JobCard jobCard = jobCardRepository.findByIdForUpdate(jobId)
+                .orElseThrow(() -> BusinessException.notFound("Job card not found"));
 
-        JobCard jobCard = timesheet.getJobCard();
+        Timesheet timesheet = timesheetRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("Timesheet not found"));
+
+
 
         if (jobCard.getStatus() != JobCardStatus.PENDING) {
-            throw new RuntimeException(
-                    "Timesheet cannot be deleted because the Job Card is not pending"
-            );
+            throw BusinessException.conflict("Timesheet cannot be deleted because the Job Card is not pending");
         }
 
         timesheetRepository.delete(timesheet);

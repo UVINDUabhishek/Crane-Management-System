@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 
@@ -18,6 +19,7 @@ public class CreateInvoiceRequest {
     @Positive(message = "rate must be greater than 0")
     private BigDecimal rate;
 
+    @PositiveOrZero
     private BigDecimal mobilization;
 
     @NotBlank(message = "Description is required")
