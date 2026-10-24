@@ -1,0 +1,116 @@
+import {
+  Box,
+  Button,
+  Divider,
+  InputAdornment,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
+import SearchOutlined from '@mui/icons-material/SearchOutlined';
+import TuneOutlined from '@mui/icons-material/TuneOutlined';
+import type { ReactNode } from 'react';
+export function SearchField({
+  value,
+  onChange,
+  label = 'Search records',
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label?: string;
+}) {
+  return (
+    <TextField
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={label}
+      slotProps={{
+        htmlInput: { 'aria-label': label },
+        input: {
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchOutlined fontSize="small" />
+            </InputAdornment>
+          ),
+        },
+      }}
+      sx={{ width: { xs: '100%', sm: 320 } }}
+    />
+  );
+}
+export function FilterToolbar({
+  children,
+  onMore,
+  onClear,
+}: {
+  children: ReactNode;
+  onMore?: () => void;
+  onClear?: () => void;
+}) {
+  return (
+    <Stack
+      direction={{ xs: 'column', sm: 'row' }}
+      spacing={1.5}
+      sx={{
+        p: 2.5,
+        alignItems: { sm: 'center' },
+        bgcolor: (theme) =>
+          theme.palette.mode === 'dark' ? '#16242f' : '#fbfcfd',
+      }}
+    >
+      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flex: 1 }}>
+        {children}
+      </Box>
+      {onClear && (
+        <Button size="small" onClick={onClear}>
+          Clear filters
+        </Button>
+      )}
+      {onMore && (
+        <Button
+          variant="outlined"
+          startIcon={<TuneOutlined />}
+          onClick={onMore}
+        >
+          More filters
+        </Button>
+      )}
+    </Stack>
+  );
+}
+export function TableToolbar({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        sx={{
+          p: 2.5,
+          justifyContent: 'space-between',
+          alignItems: { sm: 'center' },
+        }}
+      >
+        <Box>
+          <Typography variant="h6" component="h2">
+            {title}
+          </Typography>
+          {description && (
+            <Typography variant="caption" color="text.secondary">
+              {description}
+            </Typography>
+          )}
+        </Box>
+        {children}
+      </Stack>
+      <Divider />
+    </>
+  );
+}

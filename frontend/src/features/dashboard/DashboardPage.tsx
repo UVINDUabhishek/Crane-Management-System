@@ -1,5 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Box, Chip, Paper, Stack, Typography } from '@mui/material';
+import { Box, Button, Stack } from '@mui/material';
+import {
+  ConstructionOutlined,
+  AssignmentOutlined,
+  ReceiptLongOutlined,
+  RefreshOutlined,
+} from '@mui/icons-material';
+import { PageHeader, SectionCard, StatCard } from '../../shared/ui/Layout';
+import { EmptyState } from '../../shared/States';
 import { api } from '../../shared/api';
 import { ErrorState, Loading } from '../../shared/States';
 const sections = [
@@ -49,63 +57,83 @@ export function DashboardPage() {
       <ErrorState error={query.error} retry={() => void query.refetch()} />
     );
   if (!query.data)
-    return <Alert severity="info">No dashboard data is available.</Alert>;
+    return (
+      <EmptyState
+        title="No dashboard data is available."
+        description="Try refreshing the overview to load the latest counts."
+        action={
+          <Button onClick={() => void query.refetch()}>Refresh overview</Button>
+        }
+      />
+    );
+  const icon = [
+    <ConstructionOutlined fontSize="small" />,
+    <AssignmentOutlined fontSize="small" />,
+    <ReceiptLongOutlined fontSize="small" />,
+  ];
+  const descriptions = [
+    'Fleet availability and current crane status',
+    'Current job-card status across your operations',
+    'Invoice counts by document status',
+  ];
   return (
-    <Stack spacing={4}>
-      <Box>
-        <Chip
-          label="WORKSPACE OVERVIEW"
-          size="small"
-          color="primary"
-          variant="outlined"
-        />
-        <Typography variant="h4" component="h1" sx={{ mt: 2 }}>
-          Operations at a glance
-        </Typography>
-        <Typography color="text.secondary" sx={{ mt: 1 }}>
-          Current fleet, job-card and invoice counts.
-        </Typography>
-      </Box>
-      {sections.map((section) => (
-        <Box component="section" key={section.title}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            {section.title}
-          </Typography>
+    <Stack spacing={3}>
+      <PageHeader
+        eyebrow="OPERATIONS OVERVIEW"
+        title="Operations at a glance"
+        description="A clear view of your fleet, active work and invoice records."
+        actions={
+          <Button
+            variant="outlined"
+            startIcon={<RefreshOutlined />}
+            disabled={query.isFetching}
+            onClick={() => void query.refetch()}
+          >
+            {query.isFetching ? 'Refreshing…' : 'Refresh overview'}
+          </Button>
+        }
+      />
+      {sections.map((section, index) => (
+        <SectionCard
+          key={section.title}
+          title={section.title}
+          description={descriptions[index]}
+        >
           <Box
             sx={{
               display: 'grid',
               gridTemplateColumns: {
                 xs: '1fr',
-                sm: 'repeat(2,1fr)',
-                lg: `repeat(${section.items.length},1fr)`,
+                sm: 'repeat(2,minmax(0,1fr))',
+                lg: `repeat(${section.items.length},minmax(0,1fr))`,
               },
               gap: 2,
+              p: { xs: 2, md: 3 },
             }}
           >
-            {section.items.map(([key, label]) => (
-              <Paper
+            {section.items.map(([key, label], itemIndex) => (
+              <StatCard
                 key={key}
-                variant="outlined"
-                sx={{
-                  p: 3,
-                  borderTop: '3px solid',
-                  borderTopColor: 'primary.main',
-                }}
-              >
-                <Typography color="text.secondary">{label}</Typography>
-                <Typography
-                  variant="h3"
-                  sx={{ mt: 1, fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {typeof query.data?.[key] === 'number' &&
+                label={label}
+                value={
+                  typeof query.data?.[key] === 'number' &&
                   Number.isFinite(query.data[key])
                     ? query.data[key]
-                    : '—'}
-                </Typography>
-              </Paper>
+                    : '—'
+                }
+                description={
+                  index === 0
+                    ? 'Current fleet count'
+                    : index === 1
+                      ? 'Job-card records'
+                      : 'Invoice records'
+                }
+                icon={icon[index]}
+                accent={itemIndex === 0}
+              />
             ))}
           </Box>
-        </Box>
+        </SectionCard>
       ))}
     </Stack>
   );

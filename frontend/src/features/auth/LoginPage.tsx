@@ -35,7 +35,7 @@ export function LoginPage() {
         minHeight: '100vh',
         display: 'grid',
         alignItems: 'center',
-        background: 'linear-gradient(145deg,#0b2432,#164b57)',
+        background: '#132c40',
       }}
     >
       <Container maxWidth="sm">
