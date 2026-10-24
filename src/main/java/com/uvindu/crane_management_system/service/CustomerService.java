@@ -1,5 +1,6 @@
 package com.uvindu.crane_management_system.service;
 
+import com.uvindu.crane_management_system.exception.BusinessException;
 import com.uvindu.crane_management_system.dto.CreateCustomerRequest;
 import com.uvindu.crane_management_system.dto.CustomerResponse;
 import com.uvindu.crane_management_system.dto.UpdateCustomerRequest;
@@ -23,7 +24,7 @@ public class CustomerService {
     public CustomerResponse createCustomer(CreateCustomerRequest request) {
 
         if(customerRepository.existsByRegistrationNo(request.getRegistrationNo())) {
-            throw new RuntimeException("Customer already exists");
+            throw BusinessException.conflict("Customer already exists");
         }
 
         Customer customer = new Customer();
@@ -57,7 +58,7 @@ public class CustomerService {
 
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Customer not found"));
+                        BusinessException.notFound("Customer not found"));
 
         return mapToResponse(customer);
 
@@ -68,7 +69,7 @@ public class CustomerService {
 
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Customer not found"));
+                        BusinessException.notFound("Customer not found"));
 
         customer.setCompanyName(request.getCompanyName());
         customer.setRegistrationNo(request.getRegistrationNo());
@@ -90,7 +91,7 @@ public class CustomerService {
 
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Customer not found"));
+                        BusinessException.notFound("Customer not found"));
 
         customer.setActive(false);
 

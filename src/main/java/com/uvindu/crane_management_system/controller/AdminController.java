@@ -23,7 +23,7 @@ public class AdminController {
 
     // Change Admin password
     @PutMapping("/me/password")
-    public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequest request, Authentication authentication) {
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request, Authentication authentication) {
 
         userService.changeAdminPassword(authentication.getName(), request);
 
@@ -33,7 +33,7 @@ public class AdminController {
 
     // Create a User
     @PostMapping("/users")
-    public ResponseEntity<UserResponse> createUser(@RequestBody CreateUserRequest request) {
+    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
 
         return ResponseEntity.ok(userService.register(request));
 
@@ -57,7 +57,7 @@ public class AdminController {
 
     // Update User
     @PutMapping("/users/{id}")
-    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @RequestBody UpdateUserRequest request) {
+    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
 
         return ResponseEntity.ok(userService.updateUser(id, request));
 

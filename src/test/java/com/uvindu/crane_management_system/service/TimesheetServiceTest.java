@@ -45,7 +45,7 @@ class TimesheetServiceTest extends BaseUnitTest {
         CreateTimesheetRequest request = TimesheetTestDataBuilder.createTimesheetRequest(1L);
         Timesheet savedTimesheet = TimesheetTestDataBuilder.createTimesheet(1L, "TS-0001", jobCard);
 
-        when(jobCardRepository.findById(1L)).thenReturn(Optional.of(jobCard));
+        when(jobCardRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(jobCard));
         when(timesheetRepository.existsByJobCardAndDateOfWork(jobCard, LocalDate.now())).thenReturn(false);
         when(timesheetRepository.findTopByOrderByIdDesc()).thenReturn(Optional.empty());
         when(timesheetRepository.save(any(Timesheet.class))).thenReturn(savedTimesheet);
@@ -64,7 +64,7 @@ class TimesheetServiceTest extends BaseUnitTest {
     void shouldThrowExceptionWhenCreatingTimesheetForNonExistentJobCard() {
         // Arrange
         CreateTimesheetRequest request = TimesheetTestDataBuilder.createTimesheetRequest(999L);
-        when(jobCardRepository.findById(999L)).thenReturn(Optional.empty());
+        when(jobCardRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThatThrownBy(() -> timesheetService.createTimesheet(request))
@@ -80,7 +80,7 @@ class TimesheetServiceTest extends BaseUnitTest {
         JobCard jobCard = TimesheetTestDataBuilder.createCompletedJobCard(1L);
         CreateTimesheetRequest request = TimesheetTestDataBuilder.createTimesheetRequest(1L);
 
-        when(jobCardRepository.findById(1L)).thenReturn(Optional.of(jobCard));
+        when(jobCardRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(jobCard));
 
         // Act & Assert
         assertThatThrownBy(() -> timesheetService.createTimesheet(request))
@@ -97,7 +97,7 @@ class TimesheetServiceTest extends BaseUnitTest {
         CreateTimesheetRequest request =
                 TimesheetTestDataBuilder.createTimesheetRequest(1L);
 
-        when(jobCardRepository.findById(1L))
+        when(jobCardRepository.findByIdForUpdate(1L))
                 .thenReturn(Optional.of(jobCard));
 
         // Act & Assert
@@ -115,7 +115,7 @@ class TimesheetServiceTest extends BaseUnitTest {
         JobCard jobCard = TimesheetTestDataBuilder.createPendingJobCard(1L);
         CreateTimesheetRequest request = TimesheetTestDataBuilder.createTimesheetRequest(1L);
 
-        when(jobCardRepository.findById(1L)).thenReturn(Optional.of(jobCard));
+        when(jobCardRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(jobCard));
         when(timesheetRepository.existsByJobCardAndDateOfWork(jobCard, LocalDate.now())).thenReturn(true);
 
         // Act & Assert
@@ -143,7 +143,7 @@ class TimesheetServiceTest extends BaseUnitTest {
         Timesheet existingTimesheet = TimesheetTestDataBuilder.createTimesheet(1L, "TS-0005", jobCard);
         Timesheet savedTimesheet = TimesheetTestDataBuilder.createTimesheet(2L, "TS-0006", jobCard);
 
-        when(jobCardRepository.findById(1L)).thenReturn(Optional.of(jobCard));
+        when(jobCardRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(jobCard));
         when(timesheetRepository.existsByJobCardAndDateOfWork(jobCard, LocalDate.now())).thenReturn(false);
         when(timesheetRepository.findTopByOrderByIdDesc()).thenReturn(Optional.of(existingTimesheet));
         when(timesheetRepository.save(any(Timesheet.class))).thenReturn(savedTimesheet);
@@ -234,6 +234,10 @@ class TimesheetServiceTest extends BaseUnitTest {
                 .thenReturn(Optional.empty());
         when(timesheetRepository.save(any(Timesheet.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        when(timesheetRepository.findJobCardIdById(1L)).thenReturn(Optional.of(timesheet.getJobCard().getId()));
+        when(jobCardRepository.findByIdForUpdate(timesheet.getJobCard().getId()))
+                .thenReturn(Optional.of(timesheet.getJobCard()));
+
         // Act
         TimesheetResponse response = timesheetService.updateTimesheet(1L, request);
 
@@ -253,6 +257,10 @@ class TimesheetServiceTest extends BaseUnitTest {
 
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(timesheet));
 
+        when(timesheetRepository.findJobCardIdById(1L)).thenReturn(Optional.of(timesheet.getJobCard().getId()));
+        when(jobCardRepository.findByIdForUpdate(timesheet.getJobCard().getId()))
+                .thenReturn(Optional.of(timesheet.getJobCard()));
+
         // Act & Assert
         assertThatThrownBy(() -> timesheetService.updateTimesheet(1L, request))
                 .isInstanceOf(RuntimeException.class)
@@ -265,7 +273,7 @@ class TimesheetServiceTest extends BaseUnitTest {
         UpdateTimesheetRequest request =
                 TimesheetTestDataBuilder.createUpdateTimesheetRequest();
 
-        when(timesheetRepository.findById(999L))
+        when(timesheetRepository.findJobCardIdById(999L))
                 .thenReturn(Optional.empty());
 
         // Act & Assert
@@ -289,6 +297,10 @@ class TimesheetServiceTest extends BaseUnitTest {
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(timesheet));
         when(timesheetRepository.findByJobCardAndDateOfWork(jobCard, LocalDate.now().plusDays(1)))
                 .thenReturn(Optional.of(existingTimesheet));
+
+        when(timesheetRepository.findJobCardIdById(1L)).thenReturn(Optional.of(timesheet.getJobCard().getId()));
+        when(jobCardRepository.findByIdForUpdate(timesheet.getJobCard().getId()))
+                .thenReturn(Optional.of(timesheet.getJobCard()));
 
         // Act & Assert
         assertThatThrownBy(() -> timesheetService.updateTimesheet(1L, request))
@@ -331,6 +343,10 @@ class TimesheetServiceTest extends BaseUnitTest {
         when(timesheetRepository.save(any(Timesheet.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
+        when(timesheetRepository.findJobCardIdById(1L)).thenReturn(Optional.of(timesheet.getJobCard().getId()));
+        when(jobCardRepository.findByIdForUpdate(timesheet.getJobCard().getId()))
+                .thenReturn(Optional.of(timesheet.getJobCard()));
+
         // Act
         TimesheetResponse response =
                 timesheetService.updateTimesheet(1L, request);
@@ -352,6 +368,10 @@ class TimesheetServiceTest extends BaseUnitTest {
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(timesheet));
         doNothing().when(timesheetRepository).delete(timesheet);
 
+        when(timesheetRepository.findJobCardIdById(1L)).thenReturn(Optional.of(timesheet.getJobCard().getId()));
+        when(jobCardRepository.findByIdForUpdate(timesheet.getJobCard().getId()))
+                .thenReturn(Optional.of(timesheet.getJobCard()));
+
         // Act
         timesheetService.deleteTimesheet(1L);
 
@@ -366,6 +386,10 @@ class TimesheetServiceTest extends BaseUnitTest {
         Timesheet timesheet = TimesheetTestDataBuilder.createTimesheet(1L, "TS-0001", jobCard);
 
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(timesheet));
+
+        when(timesheetRepository.findJobCardIdById(1L)).thenReturn(Optional.of(timesheet.getJobCard().getId()));
+        when(jobCardRepository.findByIdForUpdate(timesheet.getJobCard().getId()))
+                .thenReturn(Optional.of(timesheet.getJobCard()));
 
         // Act & Assert
         assertThatThrownBy(() -> timesheetService.deleteTimesheet(1L))
@@ -391,6 +415,10 @@ class TimesheetServiceTest extends BaseUnitTest {
         when(timesheetRepository.findById(1L))
                 .thenReturn(Optional.of(timesheet));
 
+        when(timesheetRepository.findJobCardIdById(1L)).thenReturn(Optional.of(timesheet.getJobCard().getId()));
+        when(jobCardRepository.findByIdForUpdate(timesheet.getJobCard().getId()))
+                .thenReturn(Optional.of(timesheet.getJobCard()));
+
         // Act & Assert
         assertThatThrownBy(() -> timesheetService.deleteTimesheet(1L))
                 .isInstanceOf(RuntimeException.class)
@@ -403,7 +431,7 @@ class TimesheetServiceTest extends BaseUnitTest {
     @Test
     void shouldThrowExceptionWhenDeletingNonExistentTimesheet() {
         // Arrange
-        when(timesheetRepository.findById(999L)).thenReturn(Optional.empty());
+        when(timesheetRepository.findJobCardIdById(999L)).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThatThrownBy(() -> timesheetService.deleteTimesheet(999L))

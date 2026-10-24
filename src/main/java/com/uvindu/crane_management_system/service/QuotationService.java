@@ -1,5 +1,6 @@
 package com.uvindu.crane_management_system.service;
 
+import com.uvindu.crane_management_system.exception.BusinessException;
 import com.uvindu.crane_management_system.dto.CreateQuotationRequest;
 import com.uvindu.crane_management_system.dto.QuotationResponse;
 import com.uvindu.crane_management_system.dto.UpdateQuotationRequest;
@@ -28,12 +29,13 @@ public class QuotationService {
     public QuotationResponse createQuotation(CreateQuotationRequest request) {
 
         Customer customerId = customerRepository.findById(request.getCustomerId())
-                .orElseThrow(()-> new RuntimeException("Customer not found"));
+                .orElseThrow(()-> BusinessException.notFound("Customer not found"));
 
         Quotation quotation = new Quotation();
 
         quotation.setQuotationNumber(generateQuotationNumber());
         quotation.setCustomerId(customerId);
+        SchedulingService.validateDates(request.getValidFrom(), request.getValidTo());
         quotation.setType(request.getType());
         quotation.setValidFrom(request.getValidFrom());
         quotation.setValidTo(request.getValidTo());
@@ -80,7 +82,7 @@ public class QuotationService {
 
         Quotation quotation = quotationRepository.findById(id)
                 .orElseThrow(()->
-                        new RuntimeException("Quotation not found"));
+                        BusinessException.notFound("Quotation not found"));
 
         return mapToResponse(quotation);
 
@@ -91,8 +93,9 @@ public class QuotationService {
 
         Quotation quotation = quotationRepository.findById(id)
                 .orElseThrow(()->
-                        new RuntimeException("Quotation not found"));
+                        BusinessException.notFound("Quotation not found"));
 
+        SchedulingService.validateDates(request.getValidFrom(), request.getValidTo());
         quotation.setType(request.getType());
         quotation.setValidFrom(request.getValidFrom());
         quotation.setValidTo(request.getValidTo());
@@ -112,7 +115,7 @@ public class QuotationService {
 
         Quotation quotation = quotationRepository.findById(id)
                 .orElseThrow(()->
-                        new RuntimeException("Quotation not found"));
+                        BusinessException.notFound("Quotation not found"));
 
         quotation.setActive(false);
 

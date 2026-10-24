@@ -18,7 +18,6 @@ public class UpdateMaintenanceRequest {
     @NotNull(message = "Maintenance start date is required")
     private LocalDate maintenanceStartDate;
 
-    @NotNull(message = "Maintenance end date is required")
     private LocalDate maintenanceEndDate;
 
     @NotNull(message = "Maintenance Type is required")
@@ -27,5 +26,6 @@ public class UpdateMaintenanceRequest {
     @NotBlank(message = "Description is required")
     private String description;
 
+    @Positive
     private Long maintenancePersonId;
 }

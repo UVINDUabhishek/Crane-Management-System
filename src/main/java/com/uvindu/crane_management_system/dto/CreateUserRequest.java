@@ -4,6 +4,7 @@ import com.uvindu.crane_management_system.model.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+import jakarta.validation.constraints.NotNull;
 
 @Data
 public class CreateUserRequest {
@@ -18,7 +19,7 @@ public class CreateUserRequest {
     @NotBlank(message = "Password is required")
     private String password;
 
-    @NotBlank(message = "User role is required")
+    @NotNull(message = "User role is required")
     private UserRole role;
 
 }

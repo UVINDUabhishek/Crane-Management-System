@@ -39,6 +39,9 @@ class MaintenanceServiceTest extends BaseUnitTest {
     @Mock
     private CraneService craneService;
 
+    @Mock
+    private SchedulingService schedulingService;
+
     @InjectMocks
     private MaintenanceService maintenanceService;
 
@@ -206,7 +209,7 @@ class MaintenanceServiceTest extends BaseUnitTest {
 
         UpdateMaintenanceRequest request = MaintenanceTestDataBuilder.createUpdateMaintenanceRequest(1L);
 
-        when(maintenanceRepository.findById(1L)).thenReturn(Optional.of(existingMaintenance));
+        when(maintenanceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(existingMaintenance));
         when(craneRepository.findById(1L)).thenReturn(Optional.of(crane));
         when(userRepository.findById(2L)).thenReturn(Optional.of(maintenancePerson));
         when(maintenanceRepository.save(any(Maintenance.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -224,7 +227,7 @@ class MaintenanceServiceTest extends BaseUnitTest {
     void shouldThrowExceptionWhenUpdatingNonExistentMaintenance() {
         // Arrange
         UpdateMaintenanceRequest request = MaintenanceTestDataBuilder.createUpdateMaintenanceRequest(1L);
-        when(maintenanceRepository.findById(999L)).thenReturn(Optional.empty());
+        when(maintenanceRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThatThrownBy(() -> maintenanceService.updateMaintenance(999L, request))
@@ -243,10 +246,12 @@ class MaintenanceServiceTest extends BaseUnitTest {
                         MaintenanceStatus.SCHEDULED
                 );
 
+        maintenance.setCrane(crane);
+
         UpdateMaintenanceRequest request =
                 MaintenanceTestDataBuilder.createUpdateMaintenanceRequest(1L);
 
-        when(maintenanceRepository.findById(1L))
+        when(maintenanceRepository.findByIdForUpdate(1L))
                 .thenReturn(Optional.of(maintenance));
 
         when(craneRepository.findById(1L))
@@ -270,7 +275,7 @@ class MaintenanceServiceTest extends BaseUnitTest {
         Maintenance maintenance = MaintenanceTestDataBuilder.createMaintenance(1L, "MT-0001", MaintenanceStatus.SCHEDULED);
         maintenance.setCrane(crane);
 
-        when(maintenanceRepository.findById(1L)).thenReturn(Optional.of(maintenance));
+        when(maintenanceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(maintenance));
         when(maintenanceRepository.save(any(Maintenance.class))).thenAnswer(invocation -> invocation.getArgument(0));
         doNothing().when(craneService).markAsMaintenance(1L);
 
@@ -287,7 +292,7 @@ class MaintenanceServiceTest extends BaseUnitTest {
     void shouldThrowExceptionWhenStartingCompletedMaintenance() {
         // Arrange
         Maintenance maintenance = MaintenanceTestDataBuilder.createMaintenance(1L, "MT-0001", MaintenanceStatus.COMPLETED);
-        when(maintenanceRepository.findById(1L)).thenReturn(Optional.of(maintenance));
+        when(maintenanceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(maintenance));
 
         // Act & Assert
         assertThatThrownBy(() -> maintenanceService.startMaintenance(1L))
@@ -299,7 +304,7 @@ class MaintenanceServiceTest extends BaseUnitTest {
     void shouldThrowExceptionWhenStartingCanceledMaintenance() {
         // Arrange
         Maintenance maintenance = MaintenanceTestDataBuilder.createMaintenance(1L, "MT-0001", MaintenanceStatus.CANCELED);
-        when(maintenanceRepository.findById(1L)).thenReturn(Optional.of(maintenance));
+        when(maintenanceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(maintenance));
 
         // Act & Assert
         assertThatThrownBy(() -> maintenanceService.startMaintenance(1L))
@@ -311,7 +316,7 @@ class MaintenanceServiceTest extends BaseUnitTest {
     void shouldThrowExceptionWhenStartingAlreadyInProgressMaintenance() {
         // Arrange
         Maintenance maintenance = MaintenanceTestDataBuilder.createMaintenance(1L, "MT-0001", MaintenanceStatus.IN_PROGRESS);
-        when(maintenanceRepository.findById(1L)).thenReturn(Optional.of(maintenance));
+        when(maintenanceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(maintenance));
 
         // Act & Assert
         assertThatThrownBy(() -> maintenanceService.startMaintenance(1L))
@@ -326,7 +331,7 @@ class MaintenanceServiceTest extends BaseUnitTest {
         Maintenance maintenance = MaintenanceTestDataBuilder.createMaintenance(1L, "MT-0001", MaintenanceStatus.IN_PROGRESS);
         maintenance.setCrane(crane);
 
-        when(maintenanceRepository.findById(1L)).thenReturn(Optional.of(maintenance));
+        when(maintenanceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(maintenance));
         when(maintenanceRepository.save(any(Maintenance.class))).thenAnswer(invocation -> invocation.getArgument(0));
         doNothing().when(craneService).markAsAvailable(1L);
 
@@ -343,7 +348,7 @@ class MaintenanceServiceTest extends BaseUnitTest {
     void shouldThrowExceptionWhenCompletingAlreadyCompletedMaintenance() {
         // Arrange
         Maintenance maintenance = MaintenanceTestDataBuilder.createMaintenance(1L, "MT-0001", MaintenanceStatus.COMPLETED);
-        when(maintenanceRepository.findById(1L)).thenReturn(Optional.of(maintenance));
+        when(maintenanceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(maintenance));
 
         // Act & Assert
         assertThatThrownBy(() -> maintenanceService.completeMaintenance(1L))
@@ -361,7 +366,7 @@ class MaintenanceServiceTest extends BaseUnitTest {
                         MaintenanceStatus.CANCELED
                 );
 
-        when(maintenanceRepository.findById(1L))
+        when(maintenanceRepository.findByIdForUpdate(1L))
                 .thenReturn(Optional.of(maintenance));
 
         // Act & Assert
@@ -380,7 +385,7 @@ class MaintenanceServiceTest extends BaseUnitTest {
         Maintenance maintenance = MaintenanceTestDataBuilder.createMaintenance(1L, "MT-0001", MaintenanceStatus.SCHEDULED);
         maintenance.setCrane(crane);
 
-        when(maintenanceRepository.findById(1L)).thenReturn(Optional.of(maintenance));
+        when(maintenanceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(maintenance));
         when(maintenanceRepository.save(any(Maintenance.class))).thenAnswer(invocation -> invocation.getArgument(0));
         doNothing().when(craneService).markAsAvailable(1L);
 
@@ -397,7 +402,7 @@ class MaintenanceServiceTest extends BaseUnitTest {
     void shouldThrowExceptionWhenCancelingCompletedMaintenance() {
         // Arrange
         Maintenance maintenance = MaintenanceTestDataBuilder.createMaintenance(1L, "MT-0001", MaintenanceStatus.COMPLETED);
-        when(maintenanceRepository.findById(1L)).thenReturn(Optional.of(maintenance));
+        when(maintenanceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(maintenance));
 
         // Act & Assert
         assertThatThrownBy(() -> maintenanceService.cancelMaintenance(1L))

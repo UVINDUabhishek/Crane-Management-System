@@ -12,6 +12,21 @@ import java.util.Optional;
 
 public interface JobCardRepository extends JpaRepository<JobCard, Long> {
 
+    @Query(value = "select * from job_card where id = :id for update", nativeQuery = true)
+    Optional<JobCard> findByIdForUpdate(@org.springframework.data.repository.query.Param("id") Long id);
+
+
+    @Query("""
+            select count(j) > 0 from JobCard j
+            where j.craneId.id = :craneId and j.status = :status
+            and (:excludeId is null or j.id <> :excludeId)
+            and (cast(:endDate as date) is null or j.startDate <= :endDate)
+            and (j.endDate is null or j.endDate >= :startDate)
+            """)
+    boolean existsBookingConflict(@Param("craneId") Long craneId,
+            @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate,
+            @Param("excludeId") Long excludeId, @Param("status") JobCardStatus status);
+
     Optional<JobCard> findTopByOrderByIdDesc();
 
     List<JobCard> findByJobDateBetween(LocalDate fromDate, LocalDate toDate);

@@ -13,6 +13,9 @@ import java.util.Optional;
 
 public interface TimesheetRepository extends JpaRepository<Timesheet, Long> {
 
+    @Query("select t.jobCard.id from Timesheet t where t.id = :id")
+    Optional<Long> findJobCardIdById(@Param("id") Long id);
+
     Optional<Timesheet> findTopByOrderByIdDesc();
 
     boolean existsByJobCardAndDateOfWork(JobCard jobCard, LocalDate dateOfWork);

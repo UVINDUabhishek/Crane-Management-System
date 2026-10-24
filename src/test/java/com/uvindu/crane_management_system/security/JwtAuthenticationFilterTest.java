@@ -30,14 +30,19 @@ class JwtAuthenticationFilterTest extends BaseUnitTest {
     @Mock
     private HttpServletRequest request;
 
-    @Mock
-    private HttpServletResponse response;
+    private final org.springframework.mock.web.MockHttpServletResponse response = new org.springframework.mock.web.MockHttpServletResponse();
 
     @Mock
     private FilterChain filterChain;
 
     @InjectMocks
     private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @org.junit.jupiter.api.BeforeEach
+    void resetContext() {
+        SecurityContextHolder.clearContext();
+        lenient().when(request.getRequestURI()).thenReturn("/api/auth/me");
+    }
 
     @Test
     void shouldContinueFilterChainWhenNoAuthorizationHeader() throws ServletException, IOException {
@@ -152,10 +157,8 @@ class JwtAuthenticationFilterTest extends BaseUnitTest {
                 .isNull();
 
         // Invalid JWT must be rejected with HTTP 401
-        verify(response).sendError(
-                HttpServletResponse.SC_UNAUTHORIZED,
-                "Invalid or expired JWT"
-        );
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getContentAsString()).contains("UNAUTHORIZED");
 
         // The request must not continue through the filter chain
         verify(filterChain, never()).doFilter(request, response);
@@ -236,7 +239,8 @@ class JwtAuthenticationFilterTest extends BaseUnitTest {
 
         jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
 
-        verify(response).sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired JWT");
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getContentAsString()).contains("UNAUTHORIZED");
         verifyNoInteractions(filterChain);
         verify(jwtService, never()).isTokenValid(anyString(), any());
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();

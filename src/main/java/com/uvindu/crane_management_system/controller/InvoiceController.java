@@ -60,7 +60,7 @@ public class InvoiceController {
 
     // Revise invoice
     @PatchMapping("/{id}/revise")
-    public ResponseEntity<InvoiceResponse> reviseInvoice(@PathVariable Long id, @RequestBody CreateInvoiceRequest request) {
+    public ResponseEntity<InvoiceResponse> reviseInvoice(@PathVariable Long id, @Valid @RequestBody CreateInvoiceRequest request) {
 
         return ResponseEntity.ok(invoiceService.reviseInvoice(id, request));
     }

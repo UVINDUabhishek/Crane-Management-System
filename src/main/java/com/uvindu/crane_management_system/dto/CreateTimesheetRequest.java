@@ -3,6 +3,7 @@ package com.uvindu.crane_management_system.dto;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -11,6 +12,7 @@ import java.time.LocalDate;
 public class CreateTimesheetRequest {
 
     @NotNull(message = "Job card is required")
+    @Positive
     private Long jobCardId;
 
     @NotNull(message = "Date of work is required")

@@ -1,5 +1,6 @@
 package com.uvindu.crane_management_system.service;
 
+import com.uvindu.crane_management_system.exception.BusinessException;
 import com.uvindu.crane_management_system.dto.CraneResponse;
 import com.uvindu.crane_management_system.dto.CreateCraneRequest;
 import com.uvindu.crane_management_system.dto.UpdateCraneRequest;
@@ -8,6 +9,8 @@ import com.uvindu.crane_management_system.model.Crane;
 import com.uvindu.crane_management_system.model.CraneStatus;
 import com.uvindu.crane_management_system.repository.CraneRepository;
 import org.springframework.stereotype.Service;
+import com.uvindu.crane_management_system.repository.MaintenanceRepository;
+import com.uvindu.crane_management_system.model.MaintenanceStatus;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,8 +20,10 @@ import java.util.stream.Collectors;
 public class CraneService {
 
     private final CraneRepository craneRepository;
+    private final MaintenanceRepository maintenanceRepository;
 
-    public CraneService(CraneRepository craneRepository) {
+    public CraneService(CraneRepository craneRepository, MaintenanceRepository maintenanceRepository) {
+        this.maintenanceRepository = maintenanceRepository;
         this.craneRepository = craneRepository;
     }
 
@@ -84,7 +89,7 @@ public class CraneService {
 
         Crane crane = craneRepository.findById(id)
                 .orElseThrow(()->
-                        new RuntimeException("Crane not found"));
+                        BusinessException.notFound("Crane not found"));
 
         return mapToResponse(crane);
 
@@ -96,7 +101,7 @@ public class CraneService {
 
         Crane crane = craneRepository.findById(id)
                 .orElseThrow(()->
-                        new RuntimeException("Crane not found"));
+                        BusinessException.notFound("Crane not found"));
 
         crane.setType(request.getType());
         crane.setCapacity(request.getCapacity());
@@ -113,7 +118,8 @@ public class CraneService {
 
     // Mark Crane as Available
     public void markAsAvailable(Long id) {
-        updateStatus(id, CraneStatus.AVAILABLE);
+        updateStatus(id, maintenanceRepository.existsByCrane_IdAndStatus(id, MaintenanceStatus.IN_PROGRESS)
+                ? CraneStatus.MAINTENANCE : CraneStatus.AVAILABLE);
     }
 
     // Mark Crane as In-use
@@ -130,7 +136,7 @@ public class CraneService {
     private void updateStatus(Long id, CraneStatus status) {
 
         Crane crane = craneRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Crane not found"));
+                .orElseThrow(()-> BusinessException.notFound("Crane not found"));
 
         crane.setStatus(status);
 
@@ -143,7 +149,7 @@ public class CraneService {
 
         Crane crane = craneRepository.findById(id)
                 .orElseThrow(()->
-                        new RuntimeException("Crane not found"));
+                        BusinessException.notFound("Crane not found"));
 
         crane.setActive(false);
 

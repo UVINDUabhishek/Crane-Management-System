@@ -1,5 +1,6 @@
 package com.uvindu.crane_management_system.service;
 
+import com.uvindu.crane_management_system.exception.BusinessException;
 import com.uvindu.crane_management_system.dto.CreateInvoiceRequest;
 import com.uvindu.crane_management_system.dto.InvoiceResponse;
 import com.uvindu.crane_management_system.dto.UpdateInvoiceRequest;
@@ -29,7 +30,7 @@ public class InvoiceService {
 
         // Prevent duplicate invoice
         if(invoiceRepository.existsByJobCard(jobCard)) {
-            throw new RuntimeException("Invoice already exists for this Job Card");
+            throw BusinessException.conflict("Invoice already exists for this Job Card");
         }
 
         Invoice invoice = new Invoice();
@@ -50,17 +51,13 @@ public class InvoiceService {
         BigDecimal qty = jobCard.getTotalBillableHours();
 
         if(qty == null || qty.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException(
-                    "Total billable hours are not available for this Job-card"
-            );
+            throw BusinessException.conflict("Total billable hours are not available for this Job-card");
         }
 
         BigDecimal rate = jobCard.getQuotationId().getMinRate();
 
         if(rate == null || rate.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException(
-                    "Minimum rate is not available in the quotation"
-            );
+            throw BusinessException.conflict("Minimum rate is not available in the quotation");
         }
 
         BigDecimal mobilization = jobCard.getQuotationId().getMobilization();
@@ -101,18 +98,18 @@ public class InvoiceService {
     public InvoiceResponse completeInvoice(Long id) {
 
         Invoice invoice = invoiceRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Invoice not found"));
+                .orElseThrow(()-> BusinessException.notFound("Invoice not found"));
 
         if(invoice.getStatus() == InvoiceStatus.COMPLETED) {
-            throw new RuntimeException("Invoice is already completed");
+            throw BusinessException.conflict("Invoice is already completed");
         }
 
         if(invoice.getStatus() == InvoiceStatus.REVISED) {
-            throw new RuntimeException("Revised invoice cannot be completed");
+            throw BusinessException.conflict("Revised invoice cannot be completed");
         }
 
         if (invoice.getStatus() == InvoiceStatus.CANCELED) {
-            throw new RuntimeException("Canceled invoice cannot be completed");
+            throw BusinessException.conflict("Canceled invoice cannot be completed");
         }
 
         invoice.setStatus(InvoiceStatus.COMPLETED);
@@ -136,7 +133,7 @@ public class InvoiceService {
     public InvoiceResponse getInvoiceById(Long id) {
 
         Invoice invoice =  invoiceRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Invoice not found"));
+                .orElseThrow(()-> BusinessException.notFound("Invoice not found"));
 
         return mapToResponse(invoice);
     }
@@ -145,29 +142,23 @@ public class InvoiceService {
     public InvoiceResponse updateInvoice(Long id, UpdateInvoiceRequest request) {
 
         Invoice invoice = invoiceRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Invoice not found"));
+                .orElseThrow(()-> BusinessException.notFound("Invoice not found"));
 
         // Only DRAFT invoices can be updated
         if(invoice.getStatus() != InvoiceStatus.DRAFT) {
-            throw new RuntimeException(
-                    "Only draft invoices can be updated"
-            );
+            throw BusinessException.conflict("Only draft invoices can be updated");
         }
 
         BigDecimal qty = request.getQty();
 
         if(qty == null || qty.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException(
-                    "qty must be greater than 0"
-            );
+            throw BusinessException.invalid("qty must be greater than 0");
         }
 
         BigDecimal rate = request.getRate();
 
         if(rate == null || rate.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException(
-                    "rate must be greater than 0"
-            );
+            throw BusinessException.invalid("rate must be greater than 0");
         }
 
         invoice.setQty(qty);
@@ -198,14 +189,14 @@ public class InvoiceService {
     public InvoiceResponse cancelInvoice(Long id) {
 
         Invoice invoice = invoiceRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Invoice not found"));
+                .orElseThrow(() -> BusinessException.notFound("Invoice not found"));
 
         if (invoice.getStatus() == InvoiceStatus.CANCELED) {
-            throw new RuntimeException("Invoice is already canceled");
+            throw BusinessException.conflict("Invoice is already canceled");
         }
 
         if (invoice.getStatus() == InvoiceStatus.REVISED) {
-            throw new RuntimeException("Revised invoice cannot be canceled");
+            throw BusinessException.conflict("Revised invoice cannot be canceled");
         }
 
         invoice.setStatus(InvoiceStatus.CANCELED);
@@ -221,15 +212,14 @@ public class InvoiceService {
     public InvoiceResponse reviseInvoice(Long id, CreateInvoiceRequest request) {
 
         Invoice oldInvoice = invoiceRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Invoice not found"));
+                .orElseThrow(() -> BusinessException.notFound("Invoice not found"));
 
         if (oldInvoice.getStatus() != InvoiceStatus.COMPLETED) {
-            throw new RuntimeException(
-                    "Only a completed invoice can be revised");
+            throw BusinessException.conflict("Only a completed invoice can be revised");
         }
 
         if (request.getQty() == null || request.getRate() == null) {
-            throw new RuntimeException("Quantity and rate are required");
+            throw BusinessException.invalid("Quantity and rate are required");
         }
 
         // Mark old invoice as revised

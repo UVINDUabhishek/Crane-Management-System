@@ -1,6 +1,8 @@
 package com.uvindu.crane_management_system.security;
 
 import io.jsonwebtoken.JwtException;
+import com.uvindu.crane_management_system.exception.ApiProblems;
+import org.springframework.http.HttpStatus;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -66,9 +68,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 } else {
                     SecurityContextHolder.clearContext();
-                    response.sendError(
-                            HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired JWT"
-                    );
+                    ApiProblems.write(request, response, HttpStatus.UNAUTHORIZED);
                     return;
                 }
             }
@@ -77,9 +77,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             SecurityContextHolder.clearContext();
 
-            response.sendError(
-                    HttpServletResponse.SC_UNAUTHORIZED,"Invalid or expired JWT"
-            );
+            ApiProblems.write(request, response, HttpStatus.UNAUTHORIZED);
             return;
         }
 

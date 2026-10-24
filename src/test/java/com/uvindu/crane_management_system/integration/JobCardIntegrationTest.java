@@ -4,7 +4,6 @@ import com.uvindu.crane_management_system.model.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -104,6 +103,15 @@ class JobCardIntegrationTest extends AbstractIntegrationTest {
         String expectedNumber = status == JobCardStatus.PENDING
                 ? replacement.getCraneNumber() : job.getCraneId().getCraneNumber();
 
+        if (status != JobCardStatus.PENDING) {
+            mockMvc.perform(json(asRole(put("/api/job-card/{id}", job.getId()), "operations@test.local"),
+                    updateBody(job, replacement.getId()))).andExpect(status().isConflict());
+            assertThat(jobCardRepository.findById(job.getId()).orElseThrow().getCraneId().getId())
+                    .isEqualTo(originalCraneId);
+            mockMvc.perform(authorized(get("/api/job-card/{id}", job.getId())))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.status").value(status.name()));
+            return;
+        }
         mockMvc.perform(json(asRole(put("/api/job-card/{id}", job.getId()), "operations@test.local"),
                         updateBody(job, replacement.getId())))
                 .andExpect(status().isOk())
@@ -128,10 +136,9 @@ class JobCardIntegrationTest extends AbstractIntegrationTest {
     void updateRejectsUnavailableReplacementWithoutChangingPersistedAssignment(CraneStatus status) throws Exception {
         JobCard job = fixtures.fixtureJobCard();
         Crane replacement = replacementCrane(status);
-        // Business errors currently propagate without a global exception mapper.
-        assertThatThrownBy(() -> mockMvc.perform(json(authorized(put("/api/job-card/{id}", job.getId())),
-                        updateBody(job, replacement.getId()))))
-                .hasRootCauseMessage("Crane is not available");
+        mockMvc.perform(json(authorized(put("/api/job-card/{id}", job.getId())),
+                        updateBody(job, replacement.getId())))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.detail").value("Crane is not available"));
         assertThat(jobCardRepository.findById(job.getId()).orElseThrow().getCraneId().getId())
                 .isEqualTo(job.getCraneId().getId());
     }
@@ -150,9 +157,9 @@ class JobCardIntegrationTest extends AbstractIntegrationTest {
         maintenance.setStatus(MaintenanceStatus.SCHEDULED);
         maintenanceRepository.save(maintenance);
 
-        assertThatThrownBy(() -> mockMvc.perform(json(authorized(put("/api/job-card/{id}", job.getId())),
-                        updateBody(job, replacement.getId()))))
-                .hasRootCauseMessage("Crane is under maintenance during the selected period");
+        mockMvc.perform(json(authorized(put("/api/job-card/{id}", job.getId())),
+                        updateBody(job, replacement.getId())))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.detail").value("Crane is under maintenance during the selected period"));
         assertThat(jobCardRepository.findById(job.getId()).orElseThrow().getCraneId().getId())
                 .isEqualTo(job.getCraneId().getId());
     }

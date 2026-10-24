@@ -1,5 +1,6 @@
 package com.uvindu.crane_management_system.service;
 
+import com.uvindu.crane_management_system.exception.BusinessException;
 import com.uvindu.crane_management_system.dto.*;
 import com.uvindu.crane_management_system.model.User;
 import com.uvindu.crane_management_system.model.UserRole;
@@ -43,18 +44,18 @@ public class UserService {
     public void changeAdminPassword(String email, ChangePasswordRequest request) {
 
         User admin = userRepository.findByEmail(email)
-                .orElseThrow(()-> new RuntimeException("User not found"));
+                .orElseThrow(()-> BusinessException.notFound("User not found"));
 
 
         if (admin.getRole() != UserRole.ADMIN) {
-            throw new RuntimeException("Only admin can change the password");
+            throw new org.springframework.security.access.AccessDeniedException("Only admin can change the password");
         }
 
         if(!passwordEncoder.matches(
                 request.getCurrentPassword(),
                 admin.getPassword())) {
 
-            throw new RuntimeException("Current password is incorrect");
+            throw BusinessException.invalid("Current password is incorrect");
         }
 
         admin.setPassword(
@@ -85,7 +86,7 @@ public class UserService {
 
         User user = userRepository.findById(id)
                 .orElseThrow(()->
-                        new RuntimeException("User not found"));
+                        BusinessException.notFound("User not found"));
 
         return mapToResponse(user);
     }
@@ -95,7 +96,7 @@ public class UserService {
 
         User user = userRepository.findById(id)
                 .orElseThrow(()->
-                        new RuntimeException("User not found"));
+                        BusinessException.notFound("User not found"));
 
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
@@ -111,10 +112,10 @@ public class UserService {
 
         User user = userRepository.findById(id)
                 .orElseThrow(()->
-                        new RuntimeException("User not found"));
+                        BusinessException.notFound("User not found"));
 
         if (user.getRole() == UserRole.ADMIN) {
-            throw new RuntimeException("Admin account cannot be deactivated");
+            throw BusinessException.conflict("Admin account cannot be deactivated");
         }
 
         user.setActive(false);
