@@ -919,7 +919,7 @@ class ReportServiceTest extends BaseUnitTest {
                 .isEqualByComparingTo("35000");
 
         assertThat(response.getTotalRevenue())
-                .isEqualByComparingTo("535000");
+                .isEqualByComparingTo("500000");
 
         verify(invoiceRepository)
                 .findByStatus(InvoiceStatus.COMPLETED);
@@ -1084,7 +1084,7 @@ class ReportServiceTest extends BaseUnitTest {
                 .isEqualByComparingTo("35000");
 
         assertThat(september.getTotalRevenue())
-                .isEqualByComparingTo("535000");
+                .isEqualByComparingTo("500000");
 
 
         // October 2026
@@ -1110,7 +1110,7 @@ class ReportServiceTest extends BaseUnitTest {
                 .isEqualByComparingTo("10000");
 
         assertThat(october.getTotalRevenue())
-                .isEqualByComparingTo("110000");
+                .isEqualByComparingTo("100000");
 
         verify(invoiceRepository)
                 .findByStatus(InvoiceStatus.COMPLETED);
@@ -1232,7 +1232,7 @@ class ReportServiceTest extends BaseUnitTest {
                 .isEqualByComparingTo("35000");
 
         assertThat(customer1Response.getTotalRevenue())
-                .isEqualByComparingTo("535000");
+                .isEqualByComparingTo("500000");
 
 
         // Customer 2
@@ -1255,7 +1255,7 @@ class ReportServiceTest extends BaseUnitTest {
                 .isEqualByComparingTo("10000");
 
         assertThat(customer2Response.getTotalRevenue())
-                .isEqualByComparingTo("110000");
+                .isEqualByComparingTo("100000");
 
         verify(invoiceRepository)
                 .findByStatus(InvoiceStatus.COMPLETED);
@@ -1382,7 +1382,7 @@ class ReportServiceTest extends BaseUnitTest {
                 .isEqualByComparingTo("35000");
 
         assertThat(crane1Response.getTotalRevenue())
-                .isEqualByComparingTo("535000");
+                .isEqualByComparingTo("500000");
 
 
         // Crane 2
@@ -1408,7 +1408,7 @@ class ReportServiceTest extends BaseUnitTest {
                 .isEqualByComparingTo("10000");
 
         assertThat(crane2Response.getTotalRevenue())
-                .isEqualByComparingTo("110000");
+                .isEqualByComparingTo("100000");
 
         verify(invoiceRepository)
                 .findByStatus(InvoiceStatus.COMPLETED);
@@ -1771,4 +1771,40 @@ class ReportServiceTest extends BaseUnitTest {
         verify(maintenanceRepository).findAll();
     }
 
+
+    @Test
+    void shouldCountMobilizationOnceInPopulatedDateRevenueSummary() {
+        LocalDate date = LocalDate.of(2026, 10, 24);
+        Invoice invoice = new Invoice();
+        invoice.setAmount(new BigDecimal("8500.00")); // 8 * 1000 + 500
+        invoice.setMobilization(new BigDecimal("500.00"));
+        when(invoiceRepository.findByStatusAndInvoiceDateBetween(InvoiceStatus.COMPLETED, date, date))
+                .thenReturn(List.of(invoice));
+
+        RevenueSummaryResponse response = reportService.getRevenueSummaryByDate(date, date);
+
+        assertThat(response.getTotalInvoices()).isEqualTo(1L);
+        assertThat(response.getTotalAmount()).isEqualByComparingTo("8500.00");
+        assertThat(response.getTotalMobilization()).isEqualByComparingTo("500.00");
+        assertThat(response.getTotalRevenue()).isEqualByComparingTo("8500.00");
+        assertThat(invoice.getAmount()).isEqualByComparingTo("8500.00");
+        verify(invoiceRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldReturnNullAssigneeForUnassignedMaintenanceReport() {
+        Maintenance maintenance = ReportTestDataBuilder.createMaintenance(
+                1L, "MT-0001", ReportTestDataBuilder.createCrane(1L, "CR-001", "12T"), null,
+                MaintenanceType.PREVENTIVE, MaintenanceStatus.SCHEDULED,
+                LocalDate.of(2026, 10, 24), LocalDate.of(2026, 10, 25));
+        when(maintenanceRepository.findAll()).thenReturn(List.of(maintenance));
+
+        MaintenanceReportResponse response = reportService.getMaintenanceReport().getFirst();
+
+        assertThat(response.getMaintenancePerson()).isNull();
+        assertThat(response.getMaintenanceNumber()).isEqualTo("MT-0001");
+        assertThat(response.getCraneNumber()).isEqualTo("CR-001");
+        assertThat(response.getStatus()).isEqualTo("SCHEDULED");
+        assertThat(response.getRepairType()).isEqualTo("PREVENTIVE");
+    }
 }

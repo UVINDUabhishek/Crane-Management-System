@@ -2,6 +2,9 @@ package com.uvindu.crane_management_system.service;
 
 import com.uvindu.crane_management_system.BaseUnitTest;
 import com.uvindu.crane_management_system.dto.CreateJobCardRequest;
+import com.uvindu.crane_management_system.dto.UpdateJobCardRequest;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import com.uvindu.crane_management_system.dto.InvoiceResponse;
 import com.uvindu.crane_management_system.dto.JobCardResponse;
 import com.uvindu.crane_management_system.model.*;
@@ -950,5 +953,89 @@ class JobCardServiceTest extends BaseUnitTest {
 
         verify(craneService, never())
                 .markAsAvailable(anyLong());
+    }
+
+    @ParameterizedTest
+    @EnumSource(JobCardStatus.class)
+    void shouldReassignValidatedCraneOnlyForPendingJobs(JobCardStatus status) {
+        JobCard job = updateFixture(status);
+        Crane original = job.getCraneId();
+        Crane replacement = updateCrane(2L, CraneStatus.AVAILABLE);
+        UpdateJobCardRequest request = updateRequest(job, replacement.getId());
+        when(jobCardRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        when(craneRepository.findById(replacement.getId())).thenReturn(Optional.of(replacement));
+        when(jobCardRepository.save(any(JobCard.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        JobCardResponse response = jobCardService.updateJobCard(job.getId(), request);
+
+        Crane expected = status == JobCardStatus.PENDING ? replacement : original;
+        ArgumentCaptor<JobCard> saved = ArgumentCaptor.forClass(JobCard.class);
+        verify(jobCardRepository).save(saved.capture());
+        assertThat(saved.getValue().getCraneId()).isSameAs(expected);
+        assertThat(response.getCraneId()).isEqualTo(expected.getId());
+        assertThat(response.getCrane()).isEqualTo(expected.getCraneNumber());
+        assertThat(response.getStatus()).isEqualTo(status);
+        assertThat(response.getLocation()).isEqualTo("Updated location");
+        verify(maintenanceService).isCraneUnderMaintenance(replacement.getId(), request.getStartDate(), request.getEndDate());
+        verifyNoInteractions(craneService, invoiceService);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = CraneStatus.class, names = {"IN_USE", "MAINTENANCE"})
+    void shouldNotReassignOrSaveWhenRequestedCraneIsUnavailable(CraneStatus status) {
+        JobCard job = updateFixture(JobCardStatus.PENDING);
+        Crane original = job.getCraneId();
+        Crane replacement = updateCrane(2L, status);
+        when(jobCardRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        when(craneRepository.findById(replacement.getId())).thenReturn(Optional.of(replacement));
+
+        assertThatThrownBy(() -> jobCardService.updateJobCard(job.getId(), updateRequest(job, replacement.getId())))
+                .hasMessage("Crane is not available");
+        assertThat(job.getCraneId()).isSameAs(original);
+        verify(jobCardRepository, never()).save(any());
+        verifyNoInteractions(maintenanceService);
+    }
+
+    @Test
+    void shouldNotReassignOrSaveWhenRequestedCraneHasMaintenanceConflict() {
+        JobCard job = updateFixture(JobCardStatus.PENDING);
+        Crane original = job.getCraneId();
+        Crane replacement = updateCrane(2L, CraneStatus.AVAILABLE);
+        UpdateJobCardRequest request = updateRequest(job, replacement.getId());
+        when(jobCardRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        when(craneRepository.findById(replacement.getId())).thenReturn(Optional.of(replacement));
+        when(maintenanceService.isCraneUnderMaintenance(replacement.getId(), request.getStartDate(), request.getEndDate()))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> jobCardService.updateJobCard(job.getId(), request))
+                .hasMessage("Crane is under maintenance during the selected period");
+        assertThat(job.getCraneId()).isSameAs(original);
+        verify(jobCardRepository, never()).save(any());
+    }
+
+    private JobCard updateFixture(JobCardStatus status) {
+        JobCard job = JobCardTestDataBuilder.createJobCard(1L, "JC-0001", status);
+        job.setCustomerId(new Customer());
+        job.setQuotationId(new Quotation());
+        job.setSalesPersonId(new User());
+        job.setCraneId(updateCrane(1L, CraneStatus.AVAILABLE));
+        return job;
+    }
+
+    private Crane updateCrane(Long id, CraneStatus status) {
+        Crane crane = new Crane();
+        crane.setId(id);
+        crane.setCraneNumber("CR-" + id);
+        crane.setStatus(status);
+        return crane;
+    }
+
+    private UpdateJobCardRequest updateRequest(JobCard job, Long craneId) {
+        UpdateJobCardRequest request = new UpdateJobCardRequest();
+        request.setCraneId(craneId);
+        request.setStartDate(job.getStartDate());
+        request.setEndDate(job.getEndDate());
+        request.setLocation("Updated location");
+        return request;
     }
 }

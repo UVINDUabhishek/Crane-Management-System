@@ -246,6 +246,11 @@ public class JobCardService {
             jobCard.setDescription(request.getDescription());
         }
 
+        // Reassign pending jobs after validation; leave terminal-state update behavior unchanged.
+        if (jobCard.getStatus() == JobCardStatus.PENDING) {
+            jobCard.setCraneId(crane);
+        }
+
         JobCard updatedJobCard = jobCardRepository.save(jobCard);
 
         return mapToResponse(updatedJobCard);
