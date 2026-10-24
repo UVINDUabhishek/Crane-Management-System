@@ -350,7 +350,8 @@ public class ReportService {
 
         response.setTotalAmount(totalAmount);
         response.setTotalMobilization(totalMobilization);
-        response.setTotalRevenue(totalAmount.add(totalMobilization));
+        // Invoice amount already includes mobilization. Keep the separate breakdown informational.
+        response.setTotalRevenue(totalAmount);
 
         return response;
     }
@@ -421,10 +422,8 @@ public class ReportService {
                     response.getTotalInvoices() + 1
             );
 
-            response.setTotalRevenue(
-                    response.getTotalAmount()
-                            .add(response.getTotalMobilization())
-            );
+            // Invoice amount already includes mobilization.
+            response.setTotalRevenue(response.getTotalAmount());
         }
 
         return new ArrayList<>(reportMap.values());
@@ -493,10 +492,8 @@ public class ReportService {
                     response.getTotalInvoices() + 1
             );
 
-            response.setTotalRevenue(
-                    response.getTotalAmount()
-                            .add(response.getTotalMobilization())
-            );
+            // Invoice amount already includes mobilization.
+            response.setTotalRevenue(response.getTotalAmount());
         }
 
         return new ArrayList<>(reportMap.values());
@@ -562,10 +559,8 @@ public class ReportService {
                     response.getTotalInvoices() + 1
             );
 
-            response.setTotalRevenue(
-                    response.getTotalAmount()
-                            .add(response.getTotalMobilization())
-            );
+            // Invoice amount already includes mobilization.
+            response.setTotalRevenue(response.getTotalAmount());
 
         }
 
@@ -621,7 +616,8 @@ public class ReportService {
             );
 
             response.setMaintenancePerson(
-                    maintenance.getMaintenancePerson().getUsername()
+                    maintenance.getMaintenancePerson() == null
+                            ? null : maintenance.getMaintenancePerson().getUsername()
             );
 
             response.setStatus(
