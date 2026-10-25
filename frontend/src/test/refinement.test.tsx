@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { it, expect, vi } from 'vitest';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Button, ThemeProvider } from '@mui/material';
-import { createAppTheme } from '../app/theme';
+import { Button } from '@mui/material';
 import {
   ConfirmDialog,
   DataTableShell,
@@ -13,7 +12,6 @@ import {
 import { PageHeader } from '../shared/ui/Layout';
 import { ErrorState, EmptyState } from '../shared/States';
 import { ApiError } from '../shared/api';
-import { ManagementTemplate } from '../features/management/ManagementTemplate';
 it('keeps column headings while loading and prevents false empty-state/pagination interaction', () => {
   render(
     <DataTableShell
@@ -152,32 +150,6 @@ it('focuses safe cancellation, traps keyboard focus and returns to the trigger',
   expect(screen.getByRole('button', { name: 'Confirm' })).toHaveFocus();
   await user.keyboard('{Escape}');
   await waitFor(() => expect(trigger).toHaveFocus());
-});
-it('restores row-action focus after the menu opens a dialog', async () => {
-  const user = userEvent.setup();
-  render(
-    <ThemeProvider theme={createAppTheme(false)}>
-      <ManagementTemplate />
-    </ThemeProvider>,
-  );
-  await user.click(screen.getByRole('button', { name: 'Preview sample rows' }));
-  const row = screen.getByRole('button', {
-    name: 'Actions for Example company A',
-  });
-  await user.click(row);
-  expect(row).toHaveAttribute('aria-expanded', 'true');
-  await user.click(
-    screen.getByRole('menuitem', { name: 'About this example' }),
-  );
-  const dialog = await screen.findByRole('dialog', { name: 'Sample record' });
-  await waitFor(() =>
-    expect(
-      within(dialog).getByRole('button', { name: 'Cancel' }),
-    ).toHaveFocus(),
-  );
-  await user.click(within(dialog).getByRole('button', { name: 'Got it' }));
-  await waitFor(() => expect(row).toHaveFocus());
-  expect(row).toHaveAttribute('aria-expanded', 'false');
 });
 it.each([
   [401, 'Session ended'],

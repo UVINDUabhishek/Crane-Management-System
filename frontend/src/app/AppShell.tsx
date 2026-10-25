@@ -197,7 +197,7 @@ export function AppShell({
                             },
                           }}
                         />
-                        {key !== 'dashboard' && (
+                        {key !== 'dashboard' && key !== 'customers' && (
                           <Box
                             component="span"
                             sx={{

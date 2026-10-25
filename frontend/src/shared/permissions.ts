@@ -32,3 +32,6 @@ export const modules: { key: Permission; label: string }[] = [
   { key: 'invoices', label: 'Invoices' },
   { key: 'users', label: 'Users' },
 ];
+
+export const canWriteCustomers = (role: Role) =>
+  role === 'ADMIN' || role === 'SALES';
