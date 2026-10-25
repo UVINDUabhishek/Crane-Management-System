@@ -21,24 +21,22 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import {
-  Menu,
-  Close,
-  DarkModeOutlined,
-  LightModeOutlined,
-  PrecisionManufacturingOutlined,
-  DashboardOutlined,
-  ConstructionOutlined,
-  PeopleOutline,
-  DescriptionOutlined,
-  AssignmentOutlined,
-  ScheduleOutlined,
-  BuildOutlined,
-  ReceiptLongOutlined,
-  ManageAccountsOutlined,
-  ChevronRight,
-  LogoutOutlined,
-} from '@mui/icons-material';
+import Menu from '@mui/icons-material/Menu';
+import Close from '@mui/icons-material/Close';
+import DarkModeOutlined from '@mui/icons-material/DarkModeOutlined';
+import LightModeOutlined from '@mui/icons-material/LightModeOutlined';
+import PrecisionManufacturingOutlined from '@mui/icons-material/PrecisionManufacturingOutlined';
+import DashboardOutlined from '@mui/icons-material/DashboardOutlined';
+import ConstructionOutlined from '@mui/icons-material/ConstructionOutlined';
+import PeopleOutline from '@mui/icons-material/PeopleOutline';
+import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
+import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined';
+import ScheduleOutlined from '@mui/icons-material/ScheduleOutlined';
+import BuildOutlined from '@mui/icons-material/BuildOutlined';
+import ReceiptLongOutlined from '@mui/icons-material/ReceiptLongOutlined';
+import ManageAccountsOutlined from '@mui/icons-material/ManageAccountsOutlined';
+import ChevronRight from '@mui/icons-material/ChevronRight';
+import LogoutOutlined from '@mui/icons-material/LogoutOutlined';
 import { useAuth } from '../features/auth/AuthProvider';
 import { can, modules, type Permission } from '../shared/permissions';
 const icons = {
