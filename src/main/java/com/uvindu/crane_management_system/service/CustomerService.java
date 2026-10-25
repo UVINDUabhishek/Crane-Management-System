@@ -7,6 +7,7 @@ import com.uvindu.crane_management_system.dto.UpdateCustomerRequest;
 import com.uvindu.crane_management_system.model.Customer;
 import com.uvindu.crane_management_system.repository.CustomerRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -98,12 +99,21 @@ public class CustomerService {
         customerRepository.save(customer);
     }
 
+    @Transactional
+    public CustomerResponse updateActivation(Long id, boolean active) {
+        Customer customer = customerRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound("Customer not found"));
+        customer.setActive(active);
+        return mapToResponse(customerRepository.save(customer));
+    }
+
     // Mapping method
     private CustomerResponse mapToResponse(Customer customer) {
 
         CustomerResponse response = new CustomerResponse();
 
         response.setId(customer.getId());
+        response.setActive(customer.isActive());
         response.setCompanyName(customer.getCompanyName());
         response.setRegistrationNo(customer.getRegistrationNo());
         response.setVatNo(customer.getVatNo());

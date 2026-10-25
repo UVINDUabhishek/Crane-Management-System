@@ -7,6 +7,8 @@ public class CustomerResponse {
 
     private Long id;
 
+    private boolean active;
+
     private String companyName;
 
     private String registrationNo;

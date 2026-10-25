@@ -2,6 +2,7 @@ import { api } from '../../shared/api';
 import type { CustomerValues } from './customerSchema';
 export interface CustomerResponse {
   id: number;
+  active: boolean;
   companyName: string;
   registrationNo: string;
   vatNo: string;
@@ -16,6 +17,12 @@ export const customerKeys = {
   detail: (id: number) => ['customers', id] as const,
 };
 export const customersApi = {
+  activation: async ({ id, active }: { id: number; active: boolean }) =>
+    (
+      await api.patch<CustomerResponse>(`/customers/${id}/activation`, {
+        active,
+      })
+    ).data,
   list: async (signal?: AbortSignal) =>
     (await api.get<CustomerResponse[]>('/customers', { signal })).data,
   detail: async (id: number, signal?: AbortSignal) =>

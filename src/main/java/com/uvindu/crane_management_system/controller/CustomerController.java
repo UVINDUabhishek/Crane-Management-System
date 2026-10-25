@@ -1,6 +1,7 @@
 package com.uvindu.crane_management_system.controller;
 
 import com.uvindu.crane_management_system.dto.CreateCustomerRequest;
+import com.uvindu.crane_management_system.dto.CustomerActivationRequest;
 import com.uvindu.crane_management_system.dto.CustomerResponse;
 import com.uvindu.crane_management_system.dto.UpdateCustomerRequest;
 import com.uvindu.crane_management_system.service.CustomerService;
@@ -55,6 +56,13 @@ public class CustomerController {
     public ResponseEntity<CustomerResponse> updateCustomer(@PathVariable Long id, @Valid @RequestBody UpdateCustomerRequest request) {
 
         return ResponseEntity.ok(customerService.updateCustomer(id,request));
+    }
+
+    @PatchMapping("/{id}/activation")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES')")
+    public ResponseEntity<CustomerResponse> updateActivation(@PathVariable Long id,
+            @Valid @RequestBody CustomerActivationRequest request) {
+        return ResponseEntity.ok(customerService.updateActivation(id, request.active()));
     }
 
     // Delete customer

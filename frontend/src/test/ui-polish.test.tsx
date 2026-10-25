@@ -53,6 +53,9 @@ it('renders grouped sidebar, current page, breadcrumbs and identity', async () =
   ).toHaveTextContent('Overview');
   expect(screen.getByText('Alex')).toBeVisible();
   expect(await screen.findByText('12')).toBeVisible();
+  expect(
+    getComputedStyle(screen.getByRole('link', { name: 'Overview' })).boxShadow,
+  ).not.toContain('inset');
 });
 it('toggles actual theme and keeps the session', async () => {
   const user = await login();

@@ -22,6 +22,7 @@ import { session } from '../shared/api';
 import type { Role } from '../shared/permissions';
 const customer: CustomerResponse = {
   id: 42,
+  active: true,
   companyName: 'Atlas Lifting',
   registrationNo: 'REG-42',
   vatNo: 'VAT-42',
@@ -89,6 +90,14 @@ async function mount(role: Role = 'ADMIN') {
   return user;
 }
 async function action(user: ReturnType<typeof userEvent.setup>, name: string) {
+  if (name === 'Deactivate') {
+    await user.click(
+      await screen.findByRole('switch', {
+        name: 'Activation for Atlas Lifting',
+      }),
+    );
+    return await screen.findByRole('dialog');
+  }
   await user.click(
     await screen.findByRole('button', { name: 'Actions for Atlas Lifting' }),
   );
@@ -129,7 +138,12 @@ it.each(['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[])(
       role !== 'OPERATIONS',
     );
     expect(
-      screen.queryByRole('menuitem', { name: 'Deactivate' }) !== null,
+      !screen
+        .getByRole('switch', {
+          name: 'Activation for Atlas Lifting',
+          hidden: true,
+        })
+        .hasAttribute('disabled'),
     ).toBe(role !== 'OPERATIONS');
   },
 );
@@ -154,7 +168,9 @@ it('loads nullable rows, displays details and restores row focus', async () => {
     ).toHaveFocus(),
   );
   expect(screen.queryByText(/Example company/)).not.toBeInTheDocument();
-  expect(screen.queryByText('Active')).not.toBeInTheDocument();
+  expect(
+    screen.getByRole('switch', { name: 'Activation for Atlas Lifting' }),
+  ).toBeChecked();
 });
 it.each([
   'companyName',
@@ -311,18 +327,20 @@ it.each([400, 403, 404, 409, 500])(
       expect(await screen.findByText('Registration rejected')).toBeVisible();
   },
 );
-it('requires confirmation, blocks pending duplicates, handles 204 and retains directory row', async () => {
+it('requires confirmation, blocks pending duplicates, refreshes the response and retains directory row', async () => {
   const deleted = vi.fn();
   server.use(
-    http.delete('/api/customers/42', async () => {
+    http.patch('/api/customers/42/activation', async ({ request }) => {
+      expect(await request.json()).toEqual({ active: false });
       deleted();
       await delay(250);
-      return new HttpResponse(null, { status: 204 });
+      records = [{ ...customer, active: false }];
+      return HttpResponse.json(records[0]);
     }),
   );
   const user = await mount();
   let dialog = await action(user, 'Deactivate');
-  expect(within(dialog).getByText(/reactivation is unavailable/)).toBeVisible();
+  expect(within(dialog).getByText(/change activation again/)).toBeVisible();
   await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
   expect(deleted).not.toHaveBeenCalled();
   dialog = await action(user, 'Deactivate');
@@ -333,7 +351,7 @@ it('requires confirmation, blocks pending duplicates, handles 204 and retains di
   expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
   await user.keyboard('{Escape}');
   expect(screen.getByRole('dialog')).toBeVisible();
-  await screen.findByText(/Customer deactivated\./);
+  await screen.findByText(/Customer activation updated\./);
   expect(deleted).toHaveBeenCalledTimes(1);
   expect(screen.getByText('Atlas Lifting')).toBeVisible();
   expect(
@@ -344,7 +362,7 @@ it.each([403, 404, 409, 500])(
   'keeps deactivation failures visible in confirmation: %s',
   async (status) => {
     server.use(
-      http.delete('/api/customers/42', () =>
+      http.patch('/api/customers/42/activation', () =>
         HttpResponse.json({ detail: 'Unable to deactivate' }, { status }),
       ),
     );
@@ -360,7 +378,13 @@ it.each([403, 404, 409, 500])(
     );
     expect(screen.getByRole('dialog')).toBeVisible();
     expect(
-      screen.queryByText(/Customer deactivated\./),
+      screen.getByRole('switch', {
+        name: 'Activation for Atlas Lifting',
+        hidden: true,
+      }),
+    ).toBeChecked();
+    expect(
+      screen.queryByText(/Customer activation updated\./),
     ).not.toBeInTheDocument();
   },
 );
@@ -488,8 +512,8 @@ it('handles unexpected directory 403 without ending the session', async () => {
 });
 it('deactivation 401 returns to login without success feedback', async () => {
   server.use(
-    http.delete(
-      '/api/customers/42',
+    http.patch(
+      '/api/customers/42/activation',
       () => new HttpResponse(null, { status: 401 }),
     ),
   );
@@ -499,5 +523,43 @@ it('deactivation 401 returns to login without success feedback', async () => {
   expect(
     await screen.findByRole('heading', { name: 'Welcome back' }),
   ).toBeVisible();
-  expect(screen.queryByText(/Customer deactivated\./)).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(/Customer activation updated\./),
+  ).not.toBeInTheDocument();
+});
+it('refreshes persisted activation, supports reactivation and filters actual state', async () => {
+  server.use(
+    http.patch('/api/customers/42/activation', async ({ request }) => {
+      const body = (await request.json()) as { active: boolean };
+      records = [{ ...customer, active: body.active }];
+      return HttpResponse.json(records[0]);
+    }),
+  );
+  const user = await mount();
+  await action(user, 'Deactivate');
+  await user.click(screen.getByRole('button', { name: 'Deactivate customer' }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('switch', { name: 'Activation for Atlas Lifting' }),
+    ).not.toBeChecked(),
+  );
+  await user.click(screen.getByRole('button', { name: 'Active' }));
+  expect(screen.getByText('No matching customers')).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Inactive' }));
+  await user.click(
+    screen.getByRole('switch', { name: 'Activation for Atlas Lifting' }),
+  );
+  await user.click(
+    await screen.findByRole('button', { name: 'Activate customer' }),
+  );
+  await waitFor(() =>
+    expect(screen.getByText('No matching customers')).toBeVisible(),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
+  await user.click(screen.getByRole('button', { name: 'All' }));
+  expect(
+    screen.getByRole('switch', { name: 'Activation for Atlas Lifting' }),
+  ).toBeChecked();
 });

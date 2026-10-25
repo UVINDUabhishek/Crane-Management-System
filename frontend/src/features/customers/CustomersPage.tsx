@@ -1,3 +1,4 @@
+import { ActivationControl } from '../../shared/ui/ActivationControl';
 import { useRef, useState } from 'react';
 import {
   Alert,
@@ -43,6 +44,7 @@ export function CustomersPage() {
     cache = useQueryClient();
   const write = !!user && canWriteCustomers(user.role);
   const reduced = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const [status, setStatus] = useState('All');
   const [search, setSearch] = useState(''),
     [emailOnly, setEmailOnly] = useState(false),
     [page, setPage] = useState(0),
@@ -78,18 +80,18 @@ export function CustomersPage() {
     close();
   };
   const deactivate = useMutation({
-    mutationFn: customersApi.deactivate,
+    mutationFn: customersApi.activation,
     onSuccess: async () => {
       await cache.invalidateQueries({ queryKey: customerKeys.all });
-      setNotice(
-        'Customer deactivated. The directory still includes this record; activation status is not supplied.',
-      );
+      setNotice('Customer activation updated.');
+      await cache.invalidateQueries({ queryKey: ['lookups'] });
       close();
     },
   });
   const term = search.trim().toLowerCase();
   const rows = (query.data ?? []).filter(
     (c) =>
+      (status === 'All' || c.active === (status === 'Active')) &&
       (!emailOnly || !!c.customerEmail?.trim()) &&
       [
         c.companyName,
@@ -106,10 +108,27 @@ export function CustomersPage() {
   );
   const clear = () => {
     setSearch('');
+    setStatus('All');
     setEmailOnly(false);
     setPage(0);
   };
   const columns: Column<CustomerResponse>[] = [
+    {
+      key: 'active',
+      label: 'Activation',
+      render: (c) => (
+        <ActivationControl
+          active={c.active}
+          name={c.companyName}
+          disabled={!write || deactivate.isPending}
+          onChange={(element) => {
+            trigger.current = element;
+            deactivate.reset();
+            setSelection({ kind: 'deactivate', customer: c });
+          }}
+        />
+      ),
+    },
     ...(
       [
         'companyName',
@@ -215,7 +234,23 @@ export function CustomersPage() {
             </TableToolbar>
           }
           filters={
-            <FilterToolbar onClear={search || emailOnly ? clear : undefined}>
+            <FilterToolbar
+              onClear={
+                search || emailOnly || status !== 'All' ? clear : undefined
+              }
+            >
+              {['All', 'Active', 'Inactive'].map((value) => (
+                <Chip
+                  key={value}
+                  label={value}
+                  aria-pressed={status === value}
+                  color={status === value ? 'primary' : 'default'}
+                  onClick={() => {
+                    setStatus(value);
+                    setPage(0);
+                  }}
+                />
+              ))}
               <Chip
                 label="Has contact email"
                 variant="outlined"
@@ -265,24 +300,24 @@ export function CustomersPage() {
           },
         }}
       >
-        {(
-          ['view', ...(write ? (['edit', 'deactivate'] as const) : [])] as const
-        ).map((kind) => (
-          <MenuItem
-            key={kind}
-            onClick={() => {
-              if (menu) queued.current = { kind, customer: menu.customer };
-              deactivate.reset();
-              setMenu(null);
-            }}
-          >
-            {kind === 'view'
-              ? 'View details'
-              : kind === 'edit'
-                ? 'Edit'
-                : 'Deactivate'}
-          </MenuItem>
-        ))}
+        {(['view', ...(write ? (['edit'] as const) : [])] as const).map(
+          (kind) => (
+            <MenuItem
+              key={kind}
+              onClick={() => {
+                if (menu) queued.current = { kind, customer: menu.customer };
+                deactivate.reset();
+                setMenu(null);
+              }}
+            >
+              {kind === 'view'
+                ? 'View details'
+                : kind === 'edit'
+                  ? 'Edit'
+                  : 'Deactivate'}
+            </MenuItem>
+          ),
+        )}
       </Menu>
       {create && write && (
         <CustomerFormDialog onClose={close} onSaved={saved} />
@@ -297,18 +332,27 @@ export function CustomersPage() {
       )}
       <ConfirmDialog
         open={selection?.kind === 'deactivate' && write}
-        title={`Deactivate ${selection?.customer.companyName ?? 'customer'}?`}
-        description="This disables the customer record without permanently deleting it. Activation status is not returned by the API, and reactivation is unavailable in this application."
-        confirmLabel="Deactivate customer"
+        title={`${selection?.customer.active ? 'Deactivate' : 'Activate'} ${selection?.customer.companyName ?? 'customer'}?`}
+        description="Inactive customers are excluded from active customer lookups. Existing records and relationships are retained. You can change activation again later."
+        confirmLabel={
+          selection?.customer.active
+            ? 'Deactivate customer'
+            : 'Activate customer'
+        }
         pending={deactivate.isPending}
-        pendingLabel="Deactivating…"
+        pendingLabel={
+          selection?.customer.active ? 'Deactivating…' : 'Activating…'
+        }
         returnFocusRef={trigger}
         onClose={close}
         onConfirm={() => {
           if (!write || !selection || lock.current) return;
           lock.current = true;
           void deactivate
-            .mutateAsync(selection.customer.id)
+            .mutateAsync({
+              id: selection.customer.id,
+              active: !selection.customer.active,
+            })
             .catch(() => {})
             .finally(() => {
               lock.current = false;

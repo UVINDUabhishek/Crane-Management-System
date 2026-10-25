@@ -1,87 +1,69 @@
-# React Phase 2B-1 — Customer management
+# Phase 2B-1 — Customer management and reversible activation
 
-## Implementation and verified contract
+## Current implementation
 
-Based on latest main `0c30a46` (merged Phase 2A). Inspected customer controller, service, entity, DTOs, repository, security, ProblemDetail handlers and customer integration tests before implementation. The supplied contract matches source. Main also includes direct per-icon imports; those are preserved.
+The API-backed customer directory retains create/edit/detail, nullable field handling, search, email filtering and client-side pagination. The activation revision replaces the deactivate-only interface with a reusable, controlled MUI switch. ADMIN and SALES can change it; OPERATIONS sees a disabled switch with the actual state; FINANCE and MAINTENANCE retain denied customer access.
 
-The Customers route now loads the real API, with a client-side directory, detail view, shared create/edit form and explicit deactivation confirmation. Search is trimmed and case-insensitive across company, registration, VAT, contact person/number and email. A contact-email availability filter uses actual response fields. Pagination slices the returned array, resets on filters and clamps after refresh. Nullable values display placeholders. No preview fixtures remain in application code.
+Switch changes require confirmation (including reactivation). Deactivation explains that inactive customers disappear from active-only lookups while existing records and relationships remain. Pending requests disable activation controls and confirmation dismissal. Failures are displayed inside the dialog without changing displayed state. Success invalidates `['customers']` (including details) and the `['lookups']` query namespace. No optimistic activation state is stored. All/Active/Inactive filters use the server Boolean; filters reset pagination and counts remain bounded after refresh.
 
-| Operation | Existing endpoint | Success |
+`ActivationControl` takes only a real Boolean, accessible entity name, disabled state and change callback. It owns no fetching or operational-status logic. No crane, quotation, job, user or invoice module was changed.
+
+The sidebar's selected inset accent shadow was removed for all items; selected backgrounds, radius, hover and visible focus outlines are preserved.
+
+## API and persistence
+
+| Method | URL | Behavior |
 | --- | --- | --- |
-| List | GET `/api/customers` | 200, plain array |
-| Detail | GET `/api/customers/{id}` | 200, object |
-| Create | POST `/api/customers` | 201, object |
-| Edit | PUT `/api/customers/{id}` | 200, object |
-| Deactivate | DELETE `/api/customers/{id}` | 204, empty body |
+| GET | `/api/customers` | All customers, including inactive rows. |
+| GET | `/api/customers/{id}` | Detail with actual `active`. |
+| POST | `/api/customers` | Create; existing entity default is active. |
+| PUT | `/api/customers/{id}` | Update business fields; activation is unchanged. |
+| PATCH | `/api/customers/{id}/activation` | Required Boolean body `{"active":true}` or `{"active":false}`; returns updated CustomerResponse. ADMIN/SALES only. |
+| DELETE | `/api/customers/{id}` | Existing 204 soft-deactivation remains compatible. |
 
-The shared Axios base is `/api`; feature calls use `/customers` without query parameters. Responses contain numeric `id`, `companyName`, `registrationNo`, `vatNo`, `companyAddress`, and nullable `billAddress`, `contactPerson`, `contactNo`, `customerEmail`. Create/update payloads contain only the eight business fields, without id, active or metadata.
+CustomerResponse adds `active` to `id`, companyName, registrationNo, vatNo, companyAddress, billAddress, contactPerson, contactNo and customerEmail. Optional response fields retain null handling. Create/edit requests still contain only the eight business fields, never id or active. Required text is trimmed; phone is a string matching `^0\d{9}$`; email is optional. Existing ProblemDetail handling and JWT behavior are unchanged.
 
-Required values are trimmed nonblank strings; contact number must match `^0\d{9}$` and remains a string. Optional email is trimmed, validated when present, and submitted as an empty string when blank (accepted by backend @Email). No invented length/registration/VAT constraints. Known ProblemDetail field errors map to form fields; a normalized error summary also covers unknown fields. Failed submissions preserve edits. Pending requests block duplicate submission and dismissal. Query invalidation refreshes directory and selected detail; detail cache is discarded after closing to fetch fresh data on reopening.
+Activation uses a transaction and the existing entity Boolean; no schema/data migration. Missing customers return 404; missing/null activation values return 400; repeated identical assignments are valid. Existing active-only lookup queries already filter `active = true` and need no repository change. Reactivation restores lookup eligibility. Related quotations/job cards are not deleted, rewritten or transitioned. Their existing service validations remain authoritative.
 
-## Authorization and limitations
+The full array is searched/paginated locally. No unsupported server query parameters or operational status toggles were introduced. Deploy the backend response extension before the updated frontend. Concurrent writers follow the application's existing last-write behavior; this phase adds no version/conflict schema.
 
-ADMIN and SALES can read, create, edit and deactivate. OPERATIONS can read the directory/details only. FINANCE and MAINTENANCE retain route denial and issue no full-customer requests. `canWriteCustomers` separates mutation access from the existing read permissions. Backend 403 responses are still handled. AuthProvider, protected routing, session expiry/cache clearing, Axios interceptors, Vite proxy and backend are unchanged.
+## Files changed in this revision
 
-DELETE soft-deactivates; the list includes inactive records, responses omit `active`, and no reactivation endpoint exists. Confirmation explains these limits. Success invalidates queries but does not remove the row or invent durable status. No activation badges, status filters, status payloads or reactivation action exist. A reliable status response/reactivation contract is a separate backend follow-up.
-
-All search/filtering/pagination is local to the full returned array. Large directories will eventually need an explicitly designed server pagination contract. No optimistic updates or second cache were introduced. Phase 2B-2 Crane Management is not included.
-
-## Files changed
-
-| File | Purpose |
+| File | Reason |
 | --- | --- |
-| `frontend/src/features/customers/customersApi.ts` | Typed existing REST calls and query keys. |
-| `frontend/src/features/customers/customerSchema.ts` | Zod schema, request values, field labels and nullable defaults. |
-| `frontend/src/features/customers/CustomersPage.tsx` | Directory, filtering/pagination, role actions, modal handoff, deactivation and feedback. |
-| `frontend/src/features/customers/CustomerFormDialog.tsx` | Shared create/edit form, pending protection, errors and invalidation. |
-| `frontend/src/features/customers/CustomerDetailsDialog.tsx` | Fresh detail query, grouped fields, loading/retry/not-found and edit loader. |
-| `frontend/src/features/management/ManagementTemplate.tsx` | Removed obsolete preview screen. |
-| `frontend/src/app/App.tsx` | Route now renders CustomersPage. Protected is unchanged. |
-| `frontend/src/app/AppShell.tsx` | Removed Customers' Planned badge only. |
-| `frontend/src/shared/permissions.ts` | Separate customer write helper. |
-| `frontend/src/shared/ui/DataTableShell.tsx` | Optional ConfirmDialog feedback slot, so mutation failures are visible inside the modal. |
-| `frontend/src/test/customers.test.tsx` | 45 customer schema/API/UI regression cases with real providers and MSW. |
-| `frontend/src/test/ui-polish.test.tsx` | Kept shell/theme/mobile tests; replaced five obsolete preview tests with customer coverage. |
-| `frontend/src/test/refinement.test.tsx` | Kept shared-component tests; replaced preview menu/focus case with actual customer detail/focus coverage. |
-| `docs/frontend-phase-2b1-customer-management.md` | This implementation/verification report. |
-| `docs/images/phase-2b1/directory-{390,1440}-{light,dark}.png` | Four browser directory screenshots, fixture data. |
-| `docs/images/phase-2b1/form-{390,1440}-{light,dark}.png` | Four browser form screenshots, fixture data. |
+| `src/main/java/com/uvindu/crane_management_system/dto/CustomerActivationRequest.java` | Validated, non-null Boolean activation request. |
+| `src/main/java/com/uvindu/crane_management_system/dto/CustomerResponse.java` | Expose persisted activation flag. |
+| `src/main/java/com/uvindu/crane_management_system/controller/CustomerController.java` | Explicit role-protected PATCH endpoint. |
+| `src/main/java/com/uvindu/crane_management_system/service/CustomerService.java` | Transactional assignment and response mapping. |
+| `src/test/java/com/uvindu/crane_management_system/service/CustomerServiceTest.java` | Both directions, repetition, preserved fields and missing ID. |
+| `src/test/java/com/uvindu/crane_management_system/integration/CustomerIntegrationTest.java` | PostgreSQL persistence, serialization, lookup eligibility, all five roles, null/missing input and missing customer. |
+| `frontend/src/shared/ui/ActivationControl.tsx` | Reusable accessible controlled activation switch. |
+| `frontend/src/features/customers/customersApi.ts` | Boolean response type and typed PATCH call. |
+| `frontend/src/features/customers/CustomersPage.tsx` | Server-backed switch, filters, confirmation, pending/error feedback and invalidation. |
+| `frontend/src/app/AppShell.tsx` | Remove selected inset line only. |
+| `frontend/src/test/customers.test.tsx` | Switch permissions, confirmation/cancel/pending/failure/refresh/reactivation and filters; retain CRUD tests. |
+| `frontend/src/test/ui-polish.test.tsx` | Regression for selected styling without inset shadow. |
+| `docs/frontend-phase-2b1-customer-management.md` | Updated contract, verification and manual steps. |
 
-## Verification executed
+## Verification
 
-From `frontend/` (cache flag selects a writable local cache):
+**Backend:** 533 tests passed, 0 failures, 0 errors, 0 skipped. Full Maven clean verify succeeded; all JaCoCo thresholds passed (instruction/line 90%, branch 70%). **Frontend:** 94 tests passed, 0 failed, 0 skipped; TypeScript, lint, formatting and production build passed. npm audit reported 0 vulnerabilities.
 
-```sh
-npm ci --cache /workspace/.npm
-npm run format
-npm run typecheck
-npm run lint
-npm run format:check
-npm run test
-npm run build
-npm audit --audit-level=moderate --cache /workspace/.npm
-```
+Commands: `./mvnw clean verify`; frontend `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm run test`, `npm run build`, `npm audit`. Formatting was applied before final checks. In this cloud environment Maven used `JAVA_HOME=/workspace/jdk21`, `MAVEN_USER_HOME=/workspace/.m2` and `-Dmaven.repo.local=/workspace/.m2/repository`. Temporary generated credentials/JWT secret stayed in process environment; no secrets were committed.
 
-All commands passed. **93 tests run, 93 passed, 0 failed, 0 skipped**, across four files. The suite retains 48 applicable Phase 1/2A tests and replaces six obsolete preview cases with 45 customer cases. Coverage includes all roles, denied direct access, list/detail/POST/PUT/DELETE contracts, bearer header, query refresh, nullable values, six-field search, email filter, pagination/reset/clamping, loading/empty/retry, form validation, pending protection, normalized failures, field errors, retained edits, focus return, 404 detail, and deactivation/session-expiration behavior. MSW rejects unhandled requests. No component implementations were mocked.
+Initial attempts failed because the default Maven cache was read-only, the system Java installation lacked the JDK 21 compiler, and tests lacked JWT_SECRET/local PostgreSQL for the application-context test. A full temporary JDK and an isolated disposable PostgreSQL instance resolved those prerequisites; integration tests retain the existing Testcontainers configuration. Initial frontend failures were test-role/handler/transition expectations from the deactivate-only flow; these were corrected to exercise actual switches and PATCH requests.
 
-TypeScript, ESLint, Prettier and production build passed. Audit: **0 vulnerabilities**. Existing ESLint and whatwg-encoding deprecation notices and upstream Zod Rollup annotation warnings remain; none were suppressed. No dependencies changed. Backend tests were not rerun because backend files are unchanged.
+Existing ESLint/whatwg-encoding deprecation and Zod annotation warnings are not suppressed. Previous Phase 2B-1 screenshots under `docs/images/phase-2b1/` are historical, before activation controls. This revision does not claim fresh browser, screen-reader or live application acceptance testing.
 
-### Browser review
+## Exact manual verification — IntelliJ IDEA, VS Code and Chrome
 
-Real Chromium with temporary Playwright tooling exercised **8 combinations**: 390, 768, 1366 and 1440px, light and dark themes. Every combination exercised login/navigation, directory pagination/search, detail, edit, deactivation and creation. There were no page errors or page-level horizontal overflows. Eight screenshots were produced; desktop directory and mobile dark form were visually inspected. The table scrolls within its container on narrow screens.
+1. **IntelliJ IDEA:** check out `feat/react-phase-2b1-customer-management`, open the root Maven project, set Project SDK and Maven Runner JRE to a full JDK 21, and reload Maven. Start Docker for Testcontainers. Use a non-production PostgreSQL database `crane_management_system` on localhost:5432 with the configured postgres user. Supply DB_PASSWORD and a strong JWT_SECRET through Run Configuration environment variables; never add them to source control. Run Maven `clean verify`. Run `CraneManagementSystemApplication` with the same environment; confirm port 8080.
+2. **VS Code:** open `frontend`, run `npm ci`, then `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm run test`, `npm run build`, and `npm audit`. Start `npm run dev`; the existing Vite proxy forwards `/api` to localhost:8080.
+3. **Chrome:** open localhost:5173 and DevTools Network. Sign in as ADMIN with an existing test account; open Customers. Create a uniquely named test customer. Confirm GET/POST responses contain `active:true`, the switch is Active, and detail/edit still work.
+4. Click the switch. Cancel once: no PATCH should be sent and state must remain Active. Repeat and confirm: expect PATCH `/api/customers/{id}/activation`, body `{"active":false}`, HTTP 200 with `active:false`, refreshed list and Inactive switch. Inspect the PostgreSQL row in IntelliJ Database tools to confirm persistence. Reload/sign in again and verify it stays inactive.
+5. Filter Active and Inactive; test search, contact-email filter and page reset. Switch the inactive record back on, confirm, and verify PATCH `{"active":true}`, refreshed Active state and persisted Boolean. Repeating the same PATCH should return 200. Check the existing authorized active-only customer lookup: exclude when inactive, include when active. Existing quotations/job cards must remain intact.
+6. Repeat as SALES. OPERATIONS must see actual status and disabled switches, without create/edit controls. FINANCE and MAINTENANCE must lack Customers navigation and see Access denied on direct `/workspace/customers`. With test JWTs, PATCH as each forbidden role must return 403; missing/null active as ADMIN must return 400; unknown ID must return 404.
+7. Enable Chrome network throttling, confirm a change and verify switches/confirmation actions remain disabled until completion. Use DevTools request blocking to simulate a failed PATCH: no false status change, error inside confirmation, retry possible. Verify expired-token return to login. DELETE should still return 204 and soft-deactivate.
+8. At widths 390, 768, 1366 and 1440, check both themes, keyboard Tab/Space activation, Cancel/Escape focus return, horizontal table scrolling, create/edit/details and sidebar selected background. The sidebar must have no left accent stripe while keyboard focus remains visible.
 
-All browser API responses were intercepted test fixtures. Spring Boot was not listening on localhost:8080; no live-backend success is claimed. Screen-reader and cross-browser/device testing remain outstanding. The existing reduced-motion and Material UI dialog behavior are retained; menu actions wait for exit before opening a dialog.
-
-[Light directory](images/phase-2b1/directory-1440-light.png) · [Dark directory](images/phase-2b1/directory-1440-dark.png) · [Mobile directory](images/phase-2b1/directory-390-light.png) · [Mobile form](images/phase-2b1/form-390-dark.png)
-
-## Live-backend manual verification
-
-1. Use a non-production PostgreSQL database at `localhost:5432/crane_management_system` with the configured postgres user. Supply `DB_PASSWORD` and `JWT_SECRET` securely in the shell/environment; do not commit them. With Java 21, start Spring Boot from the repository root using `./mvnw spring-boot:run` (Windows: `mvnw.cmd spring-boot:run`). Confirm it listens on localhost:8080. Use existing authorized test accounts; this change creates no credentials.
-2. In `frontend/`, run `npm ci` then `npm run dev`. Open `http://localhost:5173`. The existing proxy forwards `/api` to port 8080. Do not serve the build without configuring an equivalent proxy.
-3. Sign in as ADMIN, open Customers, and create a clearly named test company with unique registration/VAT strings, both addresses, contact person, and a number such as `0771234567`. Leave email blank, then repeat validation with an invalid phone/email and blank required fields. Inspect Network for POST `/api/customers`, 201, and only the eight business fields.
-4. View details (GET by ID), edit an address (PUT by ID), close/reopen detail and confirm the saved value. Try a duplicate registration to check conflict feedback and retained form values. Search across company, registration, VAT, contact and email; toggle Has contact email. With more than five test records, change pages and page size, then search to confirm reset.
-5. Open Deactivate, cancel once and confirm no DELETE occurs. Reopen and confirm; expect DELETE 204 and accurate success feedback. The row should remain because GET includes deactivated records. There must be no status badge/filter or Reactivate action. Use browser throttling to verify disabled pending controls and retained errors on a failed request.
-6. Repeat read/write flows as SALES. Sign in as OPERATIONS: directory/detail must work, with no Add/Edit/Deactivate actions. FINANCE and MAINTENANCE must lack Customers navigation; navigating directly to `/workspace/customers` must show Access denied without a customer request.
-7. Verify logout, expired-token return to login, both themes and narrow-screen navigation. Unexpected backend 403 should show denial without a false success. Review the supplied screenshots as layout references, not proof of live integration.
-
-The feature is ready for draft PR review. Live deployment acceptance should include the above checks and assistive-technology review. No merge or next module is authorized by this delivery.
+No auto-merge or Phase 2B-2 work is included.
