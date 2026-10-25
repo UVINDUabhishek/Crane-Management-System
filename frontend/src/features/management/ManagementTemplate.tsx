@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -12,6 +12,7 @@ import {
   MenuItem,
   Stack,
   Typography,
+  useMediaQuery,
 } from '@mui/material';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
@@ -37,6 +38,9 @@ const examples: Example[] = [
   { id: 'EXAMPLE-03', name: 'Example company C', active: true },
 ];
 export function ManagementTemplate() {
+  const openInfoAfterMenu = useRef(false);
+  const rowTrigger = useRef<HTMLElement | null>(null);
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const [search, setSearch] = useState(''),
     [activeOnly, setActiveOnly] = useState(false),
     [preview, setPreview] = useState(false),
@@ -82,12 +86,7 @@ export function ManagementTemplate() {
     {
       key: 'status',
       label: 'Status',
-      render: (r) => (
-        <StatusChip
-          label={r.active ? 'Active' : 'Inactive'}
-          tone={r.active ? 'success' : 'neutral'}
-        />
-      ),
+      render: (r) => <StatusChip status={r.active ? 'ACTIVE' : 'INACTIVE'} />,
     },
     {
       key: 'actions',
@@ -97,7 +96,12 @@ export function ManagementTemplate() {
         <IconButton
           aria-label={`Actions for ${r.name}`}
           aria-haspopup="menu"
-          onClick={(e) => setAnchor(e.currentTarget)}
+          aria-expanded={anchor?.dataset.rowId === r.id}
+          data-row-id={r.id}
+          onClick={(e) => {
+            rowTrigger.current = e.currentTarget;
+            setAnchor(e.currentTarget);
+          }}
         >
           <MoreHoriz />
         </IconButton>
@@ -116,7 +120,7 @@ export function ManagementTemplate() {
           </Button>
         }
       />
-      <Alert severity="info">
+      <Alert severity="info" role="note">
         Layout preview · Customer records and actions are not connected yet.
         Sample rows are examples only.
       </Alert>
@@ -154,6 +158,7 @@ export function ManagementTemplate() {
         }
         filters={
           <FilterToolbar
+            activeCount={Number(activeOnly) + Number(!!search.trim())}
             onMore={() => setDrawer(true)}
             onClear={search || activeOnly ? clear : undefined}
           >
@@ -161,6 +166,7 @@ export function ManagementTemplate() {
               label={activeOnly ? 'Status: Active' : 'All statuses'}
               color={activeOnly ? 'primary' : 'default'}
               variant="outlined"
+              aria-pressed={activeOnly}
               onClick={() => {
                 setActiveOnly((v) => !v);
                 setPage(0);
@@ -219,11 +225,13 @@ export function ManagementTemplate() {
       <Drawer
         anchor="right"
         open={drawer}
+        transitionDuration={reducedMotion ? 0 : undefined}
         onClose={() => setDrawer(false)}
         slotProps={{
           paper: {
             sx: { width: { xs: '100%', sm: 360 }, p: 3 },
             role: 'dialog',
+            'aria-modal': true,
             'aria-label': 'Customer filters',
           },
         }}
@@ -264,13 +272,28 @@ export function ManagementTemplate() {
           Show results
         </Button>
       </Drawer>
-      <Menu anchorEl={anchor} open={!!anchor} onClose={() => setAnchor(null)}>
+      <Menu
+        anchorEl={anchor}
+        open={!!anchor}
+        transitionDuration={reducedMotion ? 0 : undefined}
+        onClose={() => setAnchor(null)}
+        slotProps={{
+          transition: {
+            onExited: () => {
+              if (openInfoAfterMenu.current) {
+                openInfoAfterMenu.current = false;
+                setInfo(true);
+              }
+            },
+          },
+        }}
+      >
         <MenuItem disabled>View customer · Coming later</MenuItem>
         <MenuItem disabled>Edit customer · Coming later</MenuItem>
         <MenuItem
           onClick={() => {
+            openInfoAfterMenu.current = true;
             setAnchor(null);
-            setInfo(true);
           }}
         >
           About this example
@@ -278,6 +301,7 @@ export function ManagementTemplate() {
       </Menu>
       <ConfirmDialog
         open={info}
+        returnFocusRef={rowTrigger}
         title="Sample record"
         description="This row demonstrates the table layout. It is not a customer record and cannot be edited or saved."
         confirmLabel="Got it"

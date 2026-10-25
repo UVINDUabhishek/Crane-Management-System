@@ -1,5 +1,6 @@
 import {
   Alert,
+  AlertTitle,
   Box,
   Button,
   CircularProgress,
@@ -90,16 +91,35 @@ export function ErrorState({
     <AccessDenied />
   ) : (
     <Alert
-      severity="error"
+      severity={
+        problem.status === 409
+          ? 'warning'
+          : problem.status === 401
+            ? 'info'
+            : 'error'
+      }
       sx={{ p: 2, alignItems: 'center' }}
       action={
-        retry ? (
+        problem.status === 401 ? (
+          <Button href="/login" color="inherit">
+            Sign in
+          </Button>
+        ) : retry ? (
           <Button color="inherit" onClick={retry}>
             Retry
           </Button>
         ) : undefined
       }
     >
+      <AlertTitle>
+        {problem.status === 401
+          ? 'Session ended'
+          : problem.status === 409
+            ? 'Action needs review'
+            : problem.status === 400
+              ? 'Check your information'
+              : 'Unable to load this content'}
+      </AlertTitle>
       {problem.message}
     </Alert>
   );

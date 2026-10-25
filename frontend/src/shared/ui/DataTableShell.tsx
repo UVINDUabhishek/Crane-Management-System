@@ -16,7 +16,9 @@ import {
   TablePagination,
   TableRow,
 } from '@mui/material';
-import type { ReactNode } from 'react';
+import { useId, useRef, type ReactNode, type RefObject } from 'react';
+import { useMediaQuery } from '@mui/material';
+import { LoadingState } from '../States';
 export interface Column<T> {
   key: string;
   label: string;
@@ -34,6 +36,8 @@ export function DataTableShell<T>({
   page,
   rowsPerPage,
   count,
+  loading = false,
+  loadingLabel = 'Loading records…',
   onPageChange,
   onRowsPerPageChange,
 }: {
@@ -47,6 +51,8 @@ export function DataTableShell<T>({
   page: number;
   rowsPerPage: number;
   count: number;
+  loading?: boolean;
+  loadingLabel?: string;
   onPageChange: (page: number) => void;
   onRowsPerPageChange: (size: number) => void;
 }) {
@@ -55,36 +61,48 @@ export function DataTableShell<T>({
       {toolbar}
       {filters}
       <TableContainer
+        role="region"
         tabIndex={0}
         aria-label={`${label} scroll area`}
         sx={{ overflowX: 'auto' }}
       >
-        <Table aria-label={label} sx={{ minWidth: 640 }}>
+        <Table aria-busy={loading} aria-label={label} sx={{ minWidth: 640 }}>
           <TableHead>
             <TableRow>
               {columns.map((c) => (
-                <TableCell key={c.key} align={c.align}>
+                <TableCell
+                  component="th"
+                  scope="col"
+                  key={c.key}
+                  align={c.align}
+                >
                   {c.label}
                 </TableCell>
               ))}
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row) => (
-              <TableRow hover key={rowKey(row)}>
-                {columns.map((c) => (
-                  <TableCell key={c.key} align={c.align}>
-                    {c.render(row)}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
+            {!loading &&
+              rows.map((row) => (
+                <TableRow hover key={rowKey(row)}>
+                  {columns.map((c) => (
+                    <TableCell key={c.key} align={c.align}>
+                      {c.render(row)}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
           </TableBody>
         </Table>
       </TableContainer>
-      {rows.length === 0 && <Box>{empty}</Box>}
+      {loading ? (
+        <LoadingState label={loadingLabel} />
+      ) : (
+        rows.length === 0 && <Box>{empty}</Box>
+      )}
       <TablePagination
         component="div"
+        disabled={loading}
         count={count}
         page={page}
         rowsPerPage={rowsPerPage}
@@ -105,18 +123,38 @@ export function DataTableShell<T>({
     </Card>
   );
 }
-export function StatusChip({
-  label,
-  tone = 'neutral',
-}: {
-  label: string;
-  tone?: 'neutral' | 'success' | 'warning';
-}) {
+const statuses = {
+  ACTIVE: ['Active', 'success'],
+  INACTIVE: ['Inactive', 'default'],
+  AVAILABLE: ['Available', 'success'],
+  IN_USE: ['In use', 'info'],
+  MAINTENANCE: ['Maintenance', 'warning'],
+  PENDING: ['Pending', 'warning'],
+  COMPLETED: ['Completed', 'success'],
+  CANCELED: ['Canceled', 'default'],
+  SCHEDULED: ['Scheduled', 'info'],
+  IN_PROGRESS: ['In progress', 'info'],
+  DRAFT: ['Draft', 'default'],
+  REVISED: ['Revised', 'warning'],
+} as const;
+export type BusinessStatus = keyof typeof statuses;
+type ChipTone = 'neutral' | 'success' | 'warning' | 'info' | 'error';
+export function StatusChip(
+  props:
+    | { status: BusinessStatus; label?: never; tone?: never }
+    | { status?: never; label: string; tone?: ChipTone },
+) {
+  const [label, color] = props.status
+    ? statuses[props.status]
+    : ([
+        props.label,
+        props.tone === 'neutral' || !props.tone ? 'default' : props.tone,
+      ] as const);
   return (
     <Chip
       label={label}
       variant="outlined"
-      color={tone === 'neutral' ? 'default' : tone}
+      color={color}
       sx={{ '& .MuiChip-label': { px: 1.25 } }}
     />
   );
@@ -126,6 +164,9 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel = 'Confirm',
+  pending = false,
+  pendingLabel = 'Working…',
+  returnFocusRef,
   onConfirm,
   onClose,
 }: {
@@ -133,25 +174,52 @@ export function ConfirmDialog({
   title: string;
   description: string;
   confirmLabel?: string;
+  pending?: boolean;
+  pendingLabel?: string;
+  returnFocusRef?: RefObject<HTMLElement | null>;
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const id = useId();
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   return (
     <Dialog
       open={open}
-      onClose={onClose}
-      aria-labelledby="confirmation-title"
+      onClose={() => {
+        if (!pending) onClose();
+      }}
+      disableEscapeKeyDown={pending}
+      transitionDuration={reducedMotion ? 0 : undefined}
+      slotProps={{
+        transition: {
+          onEntered: () => {
+            if (!pending) cancelRef.current?.focus();
+          },
+          onExited: () => {
+            if (returnFocusRef?.current?.isConnected)
+              returnFocusRef.current.focus();
+          },
+        },
+        paper: { 'aria-busy': pending },
+      }}
+      aria-labelledby={`${id}-title`}
+      aria-describedby={`${id}-description`}
       maxWidth="xs"
       fullWidth
     >
-      <DialogTitle id="confirmation-title">{title}</DialogTitle>
+      <DialogTitle id={`${id}-title`}>{title}</DialogTitle>
       <DialogContent>
-        <DialogContentText>{description}</DialogContentText>
+        <DialogContentText id={`${id}-description`}>
+          {description}
+        </DialogContentText>
       </DialogContent>
       <DialogActions sx={{ p: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={onConfirm}>
-          {confirmLabel}
+        <Button ref={cancelRef} autoFocus disabled={pending} onClick={onClose}>
+          Cancel
+        </Button>
+        <Button variant="contained" disabled={pending} onClick={onConfirm}>
+          {pending ? pendingLabel : confirmLabel}
         </Button>
       </DialogActions>
     </Dialog>

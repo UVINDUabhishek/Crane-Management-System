@@ -1,22 +1,57 @@
 import { createTheme } from '@mui/material/styles';
+interface NavigationColors {
+  background: string;
+  text: string;
+  muted: string;
+  hover: string;
+  selected: string;
+  selectedHover: string;
+  accent: string;
+  border: string;
+}
+declare module '@mui/material/styles' {
+  interface Palette {
+    navigation: NavigationColors;
+    surface: { muted: string; accent: string };
+  }
+  interface PaletteOptions {
+    navigation?: NavigationColors;
+    surface?: { muted: string; accent: string };
+  }
+}
 export function createAppTheme(dark: boolean) {
-  const border = dark ? '#304251' : '#e1e7ed';
+  const border = dark ? '#304254' : '#e1e8ef';
   return createTheme({
     palette: {
       mode: dark ? 'dark' : 'light',
-      primary: { main: dark ? '#70cfc1' : '#12675f' },
+      primary: { main: dark ? '#60cdbb' : '#087f78' },
       secondary: { main: dark ? '#a7bacf' : '#243e58' },
-      success: { main: dark ? '#80caa5' : '#28764b' },
-      warning: { main: dark ? '#e8bd70' : '#946018' },
+      success: { main: dark ? '#80caa5' : '#15803d' },
+      warning: { main: dark ? '#e8bd70' : '#b45309' },
       background: {
-        default: dark ? '#101b25' : '#f3f6f9',
-        paper: dark ? '#192732' : '#fff',
+        default: dark ? '#101a26' : '#f4f7fa',
+        paper: dark ? '#182635' : '#fff',
       },
       text: {
-        primary: dark ? '#edf3f7' : '#192e42',
-        secondary: dark ? '#acbac6' : '#5b6e7f',
+        primary: dark ? '#edf3f8' : '#17324d',
+        secondary: dark ? '#a6b7c7' : '#5e6e83',
       },
       divider: border,
+      error: { main: dark ? '#f09898' : '#b91c1c' },
+      navigation: {
+        background: dark ? '#0c1724' : '#102d46',
+        text: '#edf3f8',
+        muted: '#a6b7c7',
+        hover: '#203f55',
+        selected: '#20515a',
+        selectedHover: '#28616a',
+        accent: '#8ce0d0',
+        border: '#496476',
+      },
+      surface: {
+        muted: dark ? '#152331' : '#f8fafc',
+        accent: dark ? '#20443f' : '#e9f5f1',
+      },
     },
     spacing: 8,
     shape: { borderRadius: 12 },
@@ -31,10 +66,41 @@ export function createAppTheme(dark: boolean) {
       button: { fontWeight: 650, textTransform: 'none' },
     },
     components: {
+      MuiCssBaseline: {
+        styleOverrides: {
+          'a:focus-visible, [tabindex="0"]:focus-visible': {
+            outline: `2px solid ${dark ? '#60cdbb' : '#087f78'}`,
+            outlineOffset: 3,
+          },
+          '@media (prefers-reduced-motion: reduce)': {
+            '*, *::before, *::after': {
+              animation: 'none !important',
+              transition: 'none !important',
+              scrollBehavior: 'auto !important',
+            },
+          },
+        },
+      },
+      MuiButtonBase: {
+        styleOverrides: {
+          root: {
+            '&.Mui-focusVisible': {
+              outline: `2px solid ${dark ? '#60cdbb' : '#087f78'}`,
+              outlineOffset: 3,
+            },
+          },
+        },
+      },
+      MuiCheckbox: { styleOverrides: { root: { padding: 11 } } },
       MuiButton: {
         defaultProps: { disableElevation: true },
         styleOverrides: {
-          root: { borderRadius: 8, padding: '8px 16px', whiteSpace: 'nowrap' },
+          root: {
+            minHeight: 44,
+            borderRadius: 8,
+            padding: '8px 16px',
+            whiteSpace: 'nowrap',
+          },
         },
       },
       MuiPaper: {
@@ -52,12 +118,29 @@ export function createAppTheme(dark: boolean) {
       MuiChip: {
         defaultProps: { size: 'small' },
         styleOverrides: {
-          root: { borderRadius: 6, fontWeight: 600, fontSize: '.72rem' },
+          root: { borderRadius: 6, fontWeight: 600, fontSize: '.75rem' },
+          clickable: {
+            minHeight: 32,
+            '@media (pointer: coarse)': { minHeight: 44 },
+          },
         },
       },
       MuiTextField: { defaultProps: { size: 'small' } },
+      MuiInputBase: {
+        styleOverrides: {
+          input: ({ theme }) => ({
+            '&::placeholder': {
+              color: theme.palette.text.secondary,
+              opacity: 1,
+            },
+          }),
+        },
+      },
       MuiOutlinedInput: {
-        styleOverrides: { root: { borderRadius: 8, fontSize: '.875rem' } },
+        styleOverrides: {
+          root: { borderRadius: 8, fontSize: '.875rem' },
+          notchedOutline: { borderColor: dark ? '#7c8fa3' : '#7b8b9d' },
+        },
       },
       MuiTableCell: {
         styleOverrides: {
@@ -86,7 +169,11 @@ export function createAppTheme(dark: boolean) {
         },
       },
       MuiTooltip: { defaultProps: { arrow: true } },
-      MuiIconButton: { styleOverrides: { root: { borderRadius: 8 } } },
+      MuiIconButton: {
+        styleOverrides: {
+          root: { borderRadius: 8, minWidth: 44, minHeight: 44 },
+        },
+      },
     },
   });
 }

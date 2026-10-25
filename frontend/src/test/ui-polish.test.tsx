@@ -52,7 +52,7 @@ it('renders grouped sidebar, current page, breadcrumbs and identity', async () =
     screen.getByRole('navigation', { name: 'Breadcrumb' }),
   ).toHaveTextContent('Overview');
   expect(screen.getByText('Alex')).toBeVisible();
-  expect(screen.getByText('12')).toBeVisible();
+  expect(await screen.findByText('12')).toBeVisible();
 });
 it('toggles actual theme and keeps the session', async () => {
   const user = await login();
@@ -144,7 +144,9 @@ it('row menu offers no mutations and opens a dismissible explanation', async () 
   await user.click(
     screen.getByRole('menuitem', { name: 'About this example' }),
   );
-  expect(screen.getByRole('dialog', { name: 'Sample record' })).toBeVisible();
+  expect(
+    await screen.findByRole('dialog', { name: 'Sample record' }),
+  ).toBeVisible();
   await user.click(screen.getByRole('button', { name: 'Got it' }));
   await waitFor(() =>
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),

@@ -8,6 +8,8 @@ import { AppRoutes, createQueryClient } from '../app/App';
 import { AuthProvider } from '../features/auth/AuthProvider';
 import { api, ApiError, normalizeError } from '../shared/api';
 import { roles, type Role } from '../shared/permissions';
+import { ThemeProvider } from '@mui/material';
+import { createAppTheme } from '../app/theme';
 import { server } from './setup';
 const jwt = (seconds = 3600) =>
   `header.${btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + seconds }))}.signature`;
@@ -46,14 +48,16 @@ function mock(role: Role = 'ADMIN', seconds = 3600) {
 function mount(path = '/') {
   const cache = createQueryClient();
   render(
-    <QueryClientProvider client={cache}>
-      <AuthProvider>
-        <MemoryRouter initialEntries={[path]}>
-          <AppRoutes />
-          <Link to="/workspace/users">Test direct users route</Link>
-        </MemoryRouter>
-      </AuthProvider>
-    </QueryClientProvider>,
+    <ThemeProvider theme={createAppTheme(false)}>
+      <QueryClientProvider client={cache}>
+        <AuthProvider>
+          <MemoryRouter initialEntries={[path]}>
+            <AppRoutes />
+            <Link to="/workspace/users">Test direct users route</Link>
+          </MemoryRouter>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>,
   );
   return cache;
 }
@@ -256,6 +260,9 @@ describe('dashboard', () => {
     mount();
     await signIn();
     expect(await screen.findByText('Loading dashboard…')).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: 'Operations at a glance' }),
+    ).toBeVisible();
     expect(await screen.findByText('9')).toBeVisible();
   });
   it('handles empty data', async () => {
@@ -265,6 +272,9 @@ describe('dashboard', () => {
     await signIn();
     expect(
       await screen.findByText('No dashboard data is available.'),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: 'Operations at a glance' }),
     ).toBeVisible();
   });
   it('sanitizes server errors and supports retry', async () => {
@@ -280,6 +290,9 @@ describe('dashboard', () => {
       await screen.findByText('The service is unavailable. Please try again.'),
     ).toBeVisible();
     expect(screen.queryByText(/SQL/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Operations at a glance' }),
+    ).toBeVisible();
     server.use(
       http.get('/api/dashboard', () => HttpResponse.json({ totalCranes: 3 })),
     );

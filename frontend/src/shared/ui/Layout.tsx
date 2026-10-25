@@ -5,36 +5,41 @@ export function PageHeader({
   description,
   eyebrow,
   actions,
+  breadcrumbs,
 }: {
   title: string;
   description: string;
   eyebrow?: string;
   actions?: ReactNode;
+  breadcrumbs?: ReactNode;
 }) {
   return (
-    <Stack
-      direction={{ xs: 'column', sm: 'row' }}
-      spacing={2}
-      sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between' }}
-    >
-      <Box sx={{ minWidth: 0 }}>
-        {eyebrow && (
-          <Typography variant="overline" color="primary.main">
-            {eyebrow}
+    <Stack spacing={1.5}>
+      {breadcrumbs}
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between' }}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          {eyebrow && (
+            <Typography variant="overline" color="primary.main">
+              {eyebrow}
+            </Typography>
+          )}
+          <Typography variant="h4" component="h1" sx={{ mt: 0.5 }}>
+            {title}
           </Typography>
-        )}
-        <Typography variant="h4" component="h1" sx={{ mt: 0.5 }}>
-          {title}
-        </Typography>
-        <Typography
-          color="text.secondary"
-          variant="body2"
-          sx={{ mt: 1, maxWidth: 680 }}
-        >
-          {description}
-        </Typography>
-      </Box>
-      {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
+          <Typography
+            color="text.secondary"
+            variant="body2"
+            sx={{ mt: 1, maxWidth: 680 }}
+          >
+            {description}
+          </Typography>
+        </Box>
+        {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
+      </Stack>
     </Stack>
   );
 }
@@ -83,17 +88,22 @@ export function StatCard({
   description,
   icon,
   accent = false,
+  tone = 'primary',
 }: {
   label: string;
   value: number | string;
   description: string;
   icon: ReactNode;
   accent?: boolean;
+  tone?: 'primary' | 'success' | 'warning';
 }) {
   return (
     <Card
       sx={{
         p: { xs: 2.5, lg: 3 },
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
         height: '100%',
         borderColor: accent ? 'primary.main' : 'divider',
       }}
@@ -111,9 +121,9 @@ export function StatCard({
             placeItems: 'center',
             p: 1,
             borderRadius: 2,
-            bgcolor: (theme) =>
-              theme.palette.mode === 'dark' ? '#223c42' : '#edf6f3',
-            color: 'primary.main',
+            bgcolor: 'surface.accent',
+            color: `${tone}.main`,
+            flexShrink: 0,
           }}
         >
           {icon}
@@ -121,7 +131,8 @@ export function StatCard({
       </Stack>
       <Typography
         sx={{
-          fontSize: '2.4rem',
+          fontSize: 'clamp(1.8rem, 3vw, 2.4rem)',
+          overflowWrap: 'anywhere',
           fontWeight: 750,
           letterSpacing: '-.055em',
           fontVariantNumeric: 'tabular-nums',
@@ -131,7 +142,7 @@ export function StatCard({
       >
         {value}
       </Typography>
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" color="text.secondary" sx={{ mt: 'auto' }}>
         {description}
       </Typography>
     </Card>

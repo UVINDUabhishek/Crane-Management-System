@@ -10,6 +10,7 @@ import {
   Drawer,
   IconButton,
   List,
+  ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
@@ -70,6 +71,7 @@ export function AppShell({
   const { user, logout } = useAuth();
   const [mobile, setMobile] = useState(false);
   const theme = useTheme();
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const desktop = useMediaQuery(theme.breakpoints.up('md'));
   const location = useLocation();
   const current = modules.find(
@@ -83,7 +85,7 @@ export function AppShell({
       ? 'Access denied'
       : 'Page not found');
   const nav = (
-    <Stack sx={{ height: '100%', color: '#d8e3ec' }}>
+    <Stack sx={{ height: '100%', color: 'navigation.text' }}>
       <Stack
         direction="row"
         alignItems="center"
@@ -93,10 +95,10 @@ export function AppShell({
         <Box
           sx={{
             p: 1,
-            bgcolor: '#214b52',
+            bgcolor: 'navigation.selected',
             borderRadius: 2,
             display: 'flex',
-            color: '#9de2d6',
+            color: 'navigation.accent',
           }}
         >
           <PrecisionManufacturingOutlined />
@@ -107,12 +109,12 @@ export function AppShell({
               fontWeight: 800,
               fontSize: '1.25rem',
               letterSpacing: '.04em',
-              color: '#fff',
+              color: 'navigation.text',
             }}
           >
             CHMS
           </Typography>
-          <Typography variant="caption" sx={{ color: '#a9bac9' }}>
+          <Typography variant="caption" sx={{ color: 'navigation.muted' }}>
             Crane hire operations
           </Typography>
         </Box>
@@ -120,13 +122,16 @@ export function AppShell({
           <IconButton
             aria-label="Close navigation"
             onClick={() => setMobile(false)}
-            sx={{ color: 'inherit' }}
+            sx={{
+              color: 'inherit',
+              '&.Mui-focusVisible': { outlineColor: 'navigation.accent' },
+            }}
           >
             <Close />
           </IconButton>
         )}
       </Stack>
-      <Divider sx={{ borderColor: '#2a4052', mx: 3 }} />
+      <Divider sx={{ borderColor: 'navigation.border', mx: 3 }} />
       <Box sx={{ p: 2, overflowY: 'auto', flex: 1 }}>
         {groups.map((group) => {
           const visible = group.keys.filter(
@@ -134,7 +139,10 @@ export function AppShell({
           );
           return visible.length ? (
             <Box key={group.title} sx={{ mt: 2, mb: 2.5 }}>
-              <Typography variant="overline" sx={{ px: 1.5, color: '#9bafbf' }}>
+              <Typography
+                variant="overline"
+                sx={{ px: 1.5, color: 'navigation.muted' }}
+              >
                 {group.title}
               </Typography>
               <List
@@ -147,60 +155,68 @@ export function AppShell({
                   const Icon = icons[key];
                   const selected = current?.key === key;
                   return (
-                    <ListItemButton
-                      key={key}
-                      component={Link}
-                      to={key === 'dashboard' ? '/' : `/workspace/${key}`}
-                      aria-current={selected ? 'page' : undefined}
-                      selected={selected}
-                      onClick={() => setMobile(false)}
-                      sx={{
-                        borderRadius: 2,
-                        mb: 0.5,
-                        minHeight: 45,
-                        px: 1.5,
-                        color: selected ? '#fff' : '#c5d3df',
-                        '&:hover': { bgcolor: '#223c50' },
-                        '&.Mui-selected': {
-                          bgcolor: '#234d56',
-                          boxShadow: 'inset 3px 0 #75d1bd',
-                          '&:hover': { bgcolor: '#2b5961' },
-                        },
-                      }}
-                    >
-                      <ListItemIcon
+                    <ListItem key={key} disablePadding>
+                      <ListItemButton
+                        component={Link}
+                        to={key === 'dashboard' ? '/' : `/workspace/${key}`}
+                        aria-current={selected ? 'page' : undefined}
+                        selected={selected}
+                        onClick={() => setMobile(false)}
                         sx={{
-                          minWidth: 34,
-                          color: selected ? '#98dfce' : '#9fb5c5',
-                        }}
-                      >
-                        <Icon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={item.label}
-                        slotProps={{
-                          primary: {
-                            fontSize: '.85rem',
-                            fontWeight: selected ? 700 : 500,
+                          borderRadius: '8px',
+                          mb: 0.5,
+                          minHeight: 45,
+                          px: 1.5,
+                          color: 'navigation.text',
+                          '&.Mui-focusVisible': {
+                            outline: `2px solid ${theme.palette.navigation.accent}`,
+                            outlineOffset: 1,
+                          },
+                          '&:hover': { bgcolor: 'navigation.hover' },
+                          '&.Mui-selected': {
+                            bgcolor: 'navigation.selected',
+                            boxShadow: `inset 3px 0 ${theme.palette.navigation.accent}`,
+                            '&:hover': { bgcolor: 'navigation.selectedHover' },
                           },
                         }}
-                      />
-                      {key !== 'dashboard' && (
-                        <Box
-                          component="span"
+                      >
+                        <ListItemIcon
                           sx={{
-                            fontSize: '.62rem',
-                            color: '#bbccd8',
-                            border: '1px solid #496273',
-                            borderRadius: 1,
-                            px: 0.6,
-                            py: 0.15,
+                            minWidth: 34,
+                            color: selected
+                              ? 'navigation.accent'
+                              : 'navigation.muted',
                           }}
                         >
-                          Planned
-                        </Box>
-                      )}
-                    </ListItemButton>
+                          <Icon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={item.label}
+                          slotProps={{
+                            primary: {
+                              fontSize: '.85rem',
+                              fontWeight: selected ? 700 : 500,
+                            },
+                          }}
+                        />
+                        {key !== 'dashboard' && (
+                          <Box
+                            component="span"
+                            sx={{
+                              fontSize: '.62rem',
+                              color: 'navigation.text',
+                              border: 1,
+                              borderColor: 'navigation.border',
+                              borderRadius: 1,
+                              px: 0.6,
+                              py: 0.15,
+                            }}
+                          >
+                            Planned
+                          </Box>
+                        )}
+                      </ListItemButton>
+                    </ListItem>
                   );
                 })}
               </List>
@@ -208,14 +224,16 @@ export function AppShell({
           ) : null;
         })}
       </Box>
-      <Box sx={{ m: 2, p: 2, borderRadius: 2, bgcolor: '#1c3548' }}>
+      <Box
+        sx={{ m: 2, p: 2, borderRadius: '8px', bgcolor: 'navigation.hover' }}
+      >
         <Typography variant="caption" fontWeight={700}>
           One workspace. Clear oversight.
         </Typography>
         <Typography
           variant="caption"
           display="block"
-          sx={{ color: '#a9bdcb', mt: 0.5 }}
+          sx={{ color: 'navigation.muted', mt: 0.5 }}
         >
           Fleet · People · Operations
         </Typography>
@@ -248,7 +266,9 @@ export function AppShell({
           <Drawer
             variant="permanent"
             slotProps={{
-              paper: { sx: { width: 264, bgcolor: '#132c40', border: 0 } },
+              paper: {
+                sx: { width: 264, bgcolor: 'navigation.background', border: 0 },
+              },
             }}
           >
             {nav}
@@ -256,13 +276,14 @@ export function AppShell({
         ) : (
           <Drawer
             open={mobile}
+            transitionDuration={reducedMotion ? 0 : undefined}
             onClose={() => setMobile(false)}
             slotProps={{
               paper: {
                 sx: {
                   width: 280,
                   maxWidth: '90vw',
-                  bgcolor: '#132c40',
+                  bgcolor: 'navigation.background',
                   border: 0,
                 },
               },
@@ -292,7 +313,7 @@ export function AppShell({
             )}
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="body2" fontWeight={700}>
-                Operations workspace
+                {title}
               </Typography>
               <Typography
                 variant="caption"
@@ -323,11 +344,13 @@ export function AppShell({
               sx={{ my: 2, display: { xs: 'none', sm: 'block' } }}
             />
             <Avatar
+              role="img"
+              aria-label={`${user?.username}, ${user?.role}`}
               sx={{
                 width: 34,
                 height: 34,
-                bgcolor: dark ? '#254f50' : '#e4f1ec',
-                color: dark ? '#a5e5d3' : '#286455',
+                bgcolor: 'surface.accent',
+                color: 'primary.main',
                 fontSize: '.85rem',
                 fontWeight: 700,
               }}

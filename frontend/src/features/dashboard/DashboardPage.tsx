@@ -5,6 +5,11 @@ import {
   AssignmentOutlined,
   ReceiptLongOutlined,
   RefreshOutlined,
+  CheckCircleOutline,
+  HourglassEmptyOutlined,
+  BuildOutlined,
+  CancelOutlined,
+  EditNoteOutlined,
 } from '@mui/icons-material';
 import { PageHeader, SectionCard, StatCard } from '../../shared/ui/Layout';
 import { EmptyState } from '../../shared/States';
@@ -51,26 +56,114 @@ export function DashboardPage() {
         })
       ).data,
   });
-  if (query.isPending) return <Loading label="Loading dashboard…" />;
+  const header = (
+    <PageHeader
+      eyebrow="OPERATIONS OVERVIEW"
+      title="Operations at a glance"
+      description="A clear view of your fleet, active work and invoice records."
+      actions={
+        <Button
+          variant="outlined"
+          startIcon={<RefreshOutlined />}
+          disabled={query.isFetching}
+          onClick={() => void query.refetch()}
+        >
+          {query.isFetching ? 'Refreshing…' : 'Refresh overview'}
+        </Button>
+      }
+    />
+  );
+  if (query.isPending)
+    return (
+      <Stack spacing={3}>
+        {header}
+        <Loading label="Loading dashboard…" />
+      </Stack>
+    );
   if (query.isError)
     return (
-      <ErrorState error={query.error} retry={() => void query.refetch()} />
+      <Stack spacing={3}>
+        {header}
+        <ErrorState error={query.error} retry={() => void query.refetch()} />
+      </Stack>
     );
   if (!query.data)
     return (
-      <EmptyState
-        title="No dashboard data is available."
-        description="Try refreshing the overview to load the latest counts."
-        action={
-          <Button onClick={() => void query.refetch()}>Refresh overview</Button>
-        }
-      />
+      <Stack spacing={3}>
+        {header}
+        <EmptyState
+          title="No dashboard data is available."
+          description="Try refreshing the overview to load the latest counts."
+          action={
+            <Button onClick={() => void query.refetch()}>
+              Refresh overview
+            </Button>
+          }
+        />
+      </Stack>
     );
-  const icon = [
-    <ConstructionOutlined fontSize="small" />,
-    <AssignmentOutlined fontSize="small" />,
-    <ReceiptLongOutlined fontSize="small" />,
-  ];
+  const detail: Record<
+    CountKey,
+    {
+      description: string;
+      icon: React.ReactNode;
+      tone?: 'primary' | 'success' | 'warning';
+    }
+  > = {
+    totalCranes: {
+      description: 'All cranes in the fleet',
+      icon: <ConstructionOutlined />,
+    },
+    availableCranes: {
+      description: 'Marked available',
+      icon: <CheckCircleOutline />,
+      tone: 'success',
+    },
+    inUseCranes: {
+      description: 'Currently marked in use',
+      icon: <ConstructionOutlined />,
+    },
+    maintenanceCranes: {
+      description: 'Marked under maintenance',
+      icon: <BuildOutlined />,
+      tone: 'warning',
+    },
+    pendingJobs: {
+      description: 'Awaiting completion',
+      icon: <HourglassEmptyOutlined />,
+      tone: 'warning',
+    },
+    completedJobs: {
+      description: 'Completed job cards',
+      icon: <CheckCircleOutline />,
+      tone: 'success',
+    },
+    canceledJobs: {
+      description: 'Canceled job cards',
+      icon: <CancelOutlined />,
+    },
+    totalInvoices: {
+      description: 'All invoice records',
+      icon: <ReceiptLongOutlined />,
+    },
+    draftInvoices: {
+      description: 'Draft invoice records',
+      icon: <EditNoteOutlined />,
+    },
+    completedInvoices: {
+      description: 'Completed invoices',
+      icon: <CheckCircleOutline />,
+      tone: 'success',
+    },
+    revisedInvoices: {
+      description: 'Revised invoice records',
+      icon: <AssignmentOutlined />,
+    },
+    canceledInvoices: {
+      description: 'Canceled invoices',
+      icon: <CancelOutlined />,
+    },
+  };
   const descriptions = [
     'Fleet availability and current crane status',
     'Current job-card status across your operations',
@@ -78,21 +171,7 @@ export function DashboardPage() {
   ];
   return (
     <Stack spacing={3}>
-      <PageHeader
-        eyebrow="OPERATIONS OVERVIEW"
-        title="Operations at a glance"
-        description="A clear view of your fleet, active work and invoice records."
-        actions={
-          <Button
-            variant="outlined"
-            startIcon={<RefreshOutlined />}
-            disabled={query.isFetching}
-            onClick={() => void query.refetch()}
-          >
-            {query.isFetching ? 'Refreshing…' : 'Refresh overview'}
-          </Button>
-        }
-      />
+      {header}
       {sections.map((section, index) => (
         <SectionCard
           key={section.title}
@@ -121,14 +200,9 @@ export function DashboardPage() {
                     ? query.data[key]
                     : '—'
                 }
-                description={
-                  index === 0
-                    ? 'Current fleet count'
-                    : index === 1
-                      ? 'Job-card records'
-                      : 'Invoice records'
-                }
-                icon={icon[index]}
+                description={detail[key].description}
+                icon={detail[key].icon}
+                tone={detail[key].tone}
                 accent={itemIndex === 0}
               />
             ))}

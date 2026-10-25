@@ -34,7 +34,7 @@ export function SearchField({
           ),
         },
       }}
-      sx={{ width: { xs: '100%', sm: 320 } }}
+      sx={{ width: { xs: '100%', sm: 320 }, maxWidth: '100%', flexShrink: 0 }}
     />
   );
 }
@@ -42,10 +42,12 @@ export function FilterToolbar({
   children,
   onMore,
   onClear,
+  activeCount = 0,
 }: {
   children: ReactNode;
   onMore?: () => void;
   onClear?: () => void;
+  activeCount?: number;
 }) {
   return (
     <Stack
@@ -54,8 +56,8 @@ export function FilterToolbar({
       sx={{
         p: 2.5,
         alignItems: { sm: 'center' },
-        bgcolor: (theme) =>
-          theme.palette.mode === 'dark' ? '#16242f' : '#fbfcfd',
+        bgcolor: 'surface.muted',
+        flexWrap: 'wrap',
       }}
     >
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flex: 1 }}>
@@ -71,8 +73,11 @@ export function FilterToolbar({
           variant="outlined"
           startIcon={<TuneOutlined />}
           onClick={onMore}
+          aria-label={
+            activeCount ? `More filters, ${activeCount} active` : 'More filters'
+          }
         >
-          More filters
+          More filters{activeCount > 0 ? ` (${activeCount})` : ''}
         </Button>
       )}
     </Stack>
