@@ -35,12 +35,17 @@ export function LoginPage() {
         minHeight: '100vh',
         display: 'grid',
         alignItems: 'center',
-        background: 'linear-gradient(145deg,#0b2432,#164b57)',
+        bgcolor: 'navigation.background',
       }}
     >
       <Container maxWidth="sm">
         <Typography
-          sx={{ color: '#8ed9d1', mb: 2, fontWeight: 700, letterSpacing: 4 }}
+          sx={{
+            color: 'navigation.accent',
+            mb: 2,
+            fontWeight: 700,
+            letterSpacing: 4,
+          }}
         >
           CHMS / OPERATIONS
         </Typography>
