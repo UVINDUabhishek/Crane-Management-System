@@ -8,9 +8,11 @@ import com.uvindu.crane_management_system.exception.CraneAlreadyExistsException;
 import com.uvindu.crane_management_system.model.Crane;
 import com.uvindu.crane_management_system.model.CraneStatus;
 import com.uvindu.crane_management_system.repository.CraneRepository;
+
 import org.springframework.stereotype.Service;
 import com.uvindu.crane_management_system.repository.MaintenanceRepository;
 import com.uvindu.crane_management_system.model.MaintenanceStatus;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -157,6 +159,21 @@ public class CraneService {
 
     }
 
+    @Transactional
+    public CraneResponse updateActivation(Long id, boolean active) {
+
+        Crane crane = craneRepository.findById(id)
+                .orElseThrow(() ->
+                        BusinessException.notFound("Crane not found")
+                );
+
+        crane.setActive(active);
+
+        Crane updatedCrane = craneRepository.save(crane);
+
+        return mapToResponse(updatedCrane);
+    }
+
 
     // Mapping Method
     private CraneResponse mapToResponse(Crane crane) {
@@ -171,6 +188,7 @@ public class CraneService {
         response.setSerialNumber(crane.getSerialNumber());
         response.setYear(crane.getYear());
         response.setStatus(crane.getStatus());
+        response.setActive(crane.isActive());
         response.setLocation(crane.getLocation());
 
         return response;

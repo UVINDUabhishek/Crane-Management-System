@@ -22,6 +22,8 @@ public class CraneResponse {
 
     private CraneStatus status;
 
+    private boolean active;
+
     private String location;
 
 }

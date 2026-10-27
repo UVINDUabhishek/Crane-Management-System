@@ -59,4 +59,40 @@ class CraneIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(asRole(get("/api/cranes"),"sales@test.local"))
                 .andExpect(status().isOk());
     }
+    @Test
+    void shouldDeactivateAndReactivateCrane() throws Exception {
+
+        // Arrange
+        Long craneId = create();
+
+        // Act & Assert — Deactivate
+        mockMvc.perform(json(
+                        authorized(patch("/api/cranes/{id}/activation", craneId)),
+                        """
+                        {"active":false}
+                        """
+                ))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false))
+                .andExpect(jsonPath("$.status").value("AVAILABLE"));
+
+        assertThat(craneRepository.findById(craneId)
+                .orElseThrow()
+                .isActive()).isFalse();
+
+        // Act & Assert — Reactivate
+        mockMvc.perform(json(
+                        authorized(patch("/api/cranes/{id}/activation", craneId)),
+                        """
+                        {"active":true}
+                        """
+                ))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.status").value("AVAILABLE"));
+
+        assertThat(craneRepository.findById(craneId)
+                .orElseThrow()
+                .isActive()).isTrue();
+    }
 }

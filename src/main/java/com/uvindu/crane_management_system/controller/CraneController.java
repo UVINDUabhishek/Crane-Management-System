@@ -1,5 +1,6 @@
 package com.uvindu.crane_management_system.controller;
 
+import com.uvindu.crane_management_system.dto.CraneActivationRequest;
 import com.uvindu.crane_management_system.dto.CraneResponse;
 import com.uvindu.crane_management_system.dto.CreateCraneRequest;
 import com.uvindu.crane_management_system.dto.UpdateCraneRequest;
@@ -63,6 +64,20 @@ public class CraneController {
         craneService.deleteCrane(id);
 
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/activation")
+    public ResponseEntity<CraneResponse> updateCraneActivation(
+            @PathVariable Long id,
+            @Valid @RequestBody CraneActivationRequest request
+    ) {
+
+        CraneResponse response = craneService.updateActivation(
+                id,
+                request.active()
+        );
+
+        return ResponseEntity.ok(response);
     }
 
 }
