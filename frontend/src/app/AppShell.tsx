@@ -196,22 +196,24 @@ export function AppShell({
                             },
                           }}
                         />
-                        {key !== 'dashboard' && key !== 'customers' && (
-                          <Box
-                            component="span"
-                            sx={{
-                              fontSize: '.62rem',
-                              color: 'navigation.text',
-                              border: 1,
-                              borderColor: 'navigation.border',
-                              borderRadius: 1,
-                              px: 0.6,
-                              py: 0.15,
-                            }}
-                          >
-                            Planned
-                          </Box>
-                        )}
+                        {key !== 'dashboard' &&
+                          key !== 'customers' &&
+                          key !== 'cranes' && (
+                            <Box
+                              component="span"
+                              sx={{
+                                fontSize: '.62rem',
+                                color: 'navigation.text',
+                                border: 1,
+                                borderColor: 'navigation.border',
+                                borderRadius: 1,
+                                px: 0.6,
+                                py: 0.15,
+                              }}
+                            >
+                              Planned
+                            </Box>
+                          )}
                       </ListItemButton>
                     </ListItem>
                   );

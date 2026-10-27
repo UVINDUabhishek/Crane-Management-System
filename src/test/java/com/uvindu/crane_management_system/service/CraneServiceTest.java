@@ -6,6 +6,9 @@ import com.uvindu.crane_management_system.dto.CreateCraneRequest;
 import com.uvindu.crane_management_system.dto.UpdateCraneRequest;
 import com.uvindu.crane_management_system.model.Crane;
 import com.uvindu.crane_management_system.model.CraneStatus;
+import com.uvindu.crane_management_system.model.JobCardStatus;
+import com.uvindu.crane_management_system.model.MaintenanceStatus;
+import com.uvindu.crane_management_system.repository.JobCardRepository;
 import com.uvindu.crane_management_system.repository.CraneRepository;
 import com.uvindu.crane_management_system.util.CraneTestDataBuilder;
 import org.junit.jupiter.api.Test;
@@ -31,6 +34,9 @@ class CraneServiceTest extends BaseUnitTest {
 
     @Mock
     private com.uvindu.crane_management_system.repository.MaintenanceRepository maintenanceRepository;
+
+    @Mock
+    private JobCardRepository jobCardRepository;
 
     @InjectMocks
     private CraneService craneService;
@@ -367,7 +373,7 @@ class CraneServiceTest extends BaseUnitTest {
 
         // Arrange
         Crane crane = CraneTestDataBuilder.createCrane(1L, "CRMOBILE001", CraneStatus.AVAILABLE);
-        when(craneRepository.findById(1L)).thenReturn(Optional.of(crane));
+        when(craneRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(crane));
         when(craneRepository.save(any(Crane.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -383,11 +389,46 @@ class CraneServiceTest extends BaseUnitTest {
     void shouldThrowExceptionWhenDeletingNonExistentCrane() {
 
         // Arrange
-        when(craneRepository.findById(999L)).thenReturn(Optional.empty());
+        when(craneRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThatThrownBy(() -> craneService.deleteCrane(999L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Crane not found");
+    }
+
+    @Test
+    void activationPreservesNumberStatusAndFields() {
+        Crane crane = CraneTestDataBuilder.createCrane(1L, "CR080T001", CraneStatus.MAINTENANCE);
+        when(craneRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(crane));
+        when(craneRepository.save(crane)).thenReturn(crane);
+        for (boolean active : new boolean[]{false, false, true, true}) {
+            CraneResponse result = craneService.updateActivation(1L, active);
+            assertThat(result.isActive()).isEqualTo(active);
+            assertThat(result.getCraneNumber()).isEqualTo("CR080T001");
+            assertThat(result.getStatus()).isEqualTo(CraneStatus.MAINTENANCE);
+            assertThat(result.getSerialNumber()).isEqualTo(crane.getSerialNumber());
+        }
+    }
+    @Test
+    void pendingJobsBlockBothDeactivationPaths() {
+        Crane crane = CraneTestDataBuilder.createCrane(1L, "CR080T001", CraneStatus.AVAILABLE);
+        when(craneRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(crane));
+        when(jobCardRepository.existsByCraneId_IdAndStatus(1L, JobCardStatus.PENDING)).thenReturn(true);
+        assertThatThrownBy(() -> craneService.updateActivation(1L, false)).hasMessageContaining("pending jobs");
+        assertThatThrownBy(() -> craneService.deleteCrane(1L)).hasMessageContaining("pending jobs");
+        assertThat(crane.isActive()).isTrue();
+        verify(craneRepository, never()).save(any());
+    }
+    @Test
+    void unfinishedMaintenanceBlocksDeactivation() {
+        Crane crane = CraneTestDataBuilder.createCrane(1L, "CR080T001", CraneStatus.AVAILABLE);
+        when(craneRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(crane));
+        for (var status : new MaintenanceStatus[]{MaintenanceStatus.SCHEDULED, MaintenanceStatus.IN_PROGRESS}) {
+            reset(maintenanceRepository);
+            when(maintenanceRepository.existsByCrane_IdAndStatus(1L, status)).thenReturn(true);
+            assertThatThrownBy(() -> craneService.updateActivation(1L, false)).hasMessageContaining("maintenance");
+        }
+        verify(craneRepository, never()).save(any());
     }
 }

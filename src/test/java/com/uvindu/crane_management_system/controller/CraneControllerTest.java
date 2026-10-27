@@ -162,4 +162,13 @@ class CraneControllerTest {
 
         verify(craneService).deleteCrane(craneId);
     }
+
+    @Test void activationDelegatesAndReturnsResponse() {
+        CraneResponse response = new CraneResponse();
+        response.setActive(true);
+        when(craneService.updateActivation(1L, true)).thenReturn(response);
+        var result = craneController.updateCraneActivation(1L, new com.uvindu.crane_management_system.dto.CraneActivationRequest(true));
+        assertThat(result.getStatusCode().value()).isEqualTo(200);
+        assertThat(result.getBody()).isSameAs(response);
+    }
 }

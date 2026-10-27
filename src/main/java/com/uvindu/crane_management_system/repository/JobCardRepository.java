@@ -27,6 +27,8 @@ public interface JobCardRepository extends JpaRepository<JobCard, Long> {
             @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate,
             @Param("excludeId") Long excludeId, @Param("status") JobCardStatus status);
 
+    boolean existsByCraneId_IdAndStatus(Long craneId, JobCardStatus status);
+
     Optional<JobCard> findTopByOrderByIdDesc();
 
     List<JobCard> findByJobDateBetween(LocalDate fromDate, LocalDate toDate);
