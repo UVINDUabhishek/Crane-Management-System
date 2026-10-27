@@ -159,4 +159,19 @@ class CustomerServiceTest extends BaseUnitTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Customer not found");
     }
+
+    @Test void activationChangesOnlyTheFlagAndSerializesIt() {
+        Customer customer = CustomerTestDataBuilder.createCustomer(1L);
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+        when(customerRepository.save(customer)).thenReturn(customer);
+        for (boolean active : new boolean[]{false, false, true}) {
+            assertThat(customerService.updateActivation(1L, active).isActive()).isEqualTo(active);
+            assertThat(customer.getCompanyName()).isEqualTo("ABC Construction");
+        }
+    }
+    @Test void activationRejectsMissingCustomer() {
+        when(customerRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> customerService.updateActivation(1L, true)).hasMessage("Customer not found");
+        verify(customerRepository, never()).save(any());
+    }
 }

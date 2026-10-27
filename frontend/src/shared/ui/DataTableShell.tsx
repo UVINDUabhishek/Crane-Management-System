@@ -167,6 +167,7 @@ export function ConfirmDialog({
   pending = false,
   pendingLabel = 'Working…',
   returnFocusRef,
+  feedback,
   onConfirm,
   onClose,
 }: {
@@ -177,6 +178,7 @@ export function ConfirmDialog({
   pending?: boolean;
   pendingLabel?: string;
   returnFocusRef?: RefObject<HTMLElement | null>;
+  feedback?: ReactNode;
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -213,6 +215,7 @@ export function ConfirmDialog({
         <DialogContentText id={`${id}-description`}>
           {description}
         </DialogContentText>
+        {feedback}
       </DialogContent>
       <DialogActions sx={{ p: 2 }}>
         <Button ref={cancelRef} autoFocus disabled={pending} onClick={onClose}>

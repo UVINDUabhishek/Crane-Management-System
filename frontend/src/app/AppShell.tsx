@@ -173,7 +173,6 @@ export function AppShell({
                           '&:hover': { bgcolor: 'navigation.hover' },
                           '&.Mui-selected': {
                             bgcolor: 'navigation.selected',
-                            boxShadow: `inset 3px 0 ${theme.palette.navigation.accent}`,
                             '&:hover': { bgcolor: 'navigation.selectedHover' },
                           },
                         }}
@@ -197,7 +196,7 @@ export function AppShell({
                             },
                           }}
                         />
-                        {key !== 'dashboard' && (
+                        {key !== 'dashboard' && key !== 'customers' && (
                           <Box
                             component="span"
                             sx={{

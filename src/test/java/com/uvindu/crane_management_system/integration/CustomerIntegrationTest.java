@@ -63,4 +63,36 @@ class CustomerIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(asRole(get("/api/customers"),"finance@test.local"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test void activationPersistsAndUpdatesLookups() throws Exception {
+        Long id = create();
+        for (boolean active : new boolean[]{false, false, true, true}) {
+            mockMvc.perform(json(authorized(patch("/api/customers/{id}/activation", id)),
+                    "{\"active\":" + active + "}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.active").value(active));
+            assertThat(customerRepository.findById(id).orElseThrow().isActive()).isEqualTo(active);
+            assertThat(customerRepository.findActiveLookupOptions().size()).isEqualTo(active ? 1 : 0);
+        }
+    }
+    @Test void activationValidatesAndChecksRoles() throws Exception {
+        User maintenance = new User();
+        maintenance.setUsername("Maintenance");
+        maintenance.setEmail("maintenance@test.local");
+        maintenance.setPassword(passwordEncoder.encode("TestPass123!"));
+        maintenance.setRole(UserRole.MAINTENANCE);
+        maintenance.setActive(true);
+        userRepository.save(maintenance);
+        Long id = create();
+        for (String role : new String[]{"admin", "sales", "operations", "finance", "maintenance"}) {
+            mockMvc.perform(json(asRole(patch("/api/customers/{id}/activation", id), role + "@test.local"),
+                    "{\"active\":false}"))
+                    .andExpect(status().is(role.equals("admin") || role.equals("sales") ? 200 : 403));
+        }
+        for (String body : new String[]{"{}", "{\"active\":null}"}) {
+            mockMvc.perform(json(authorized(patch("/api/customers/{id}/activation", id)), body))
+                    .andExpect(status().isBadRequest());
+        }
+        mockMvc.perform(json(authorized(patch("/api/customers/999999/activation")), "{\"active\":true}"))
+                .andExpect(status().isNotFound());
+    }
 }

@@ -19,7 +19,7 @@ import { AppShell } from './AppShell';
 import { createAppTheme } from './theme';
 import { PageHeader, SectionCard } from '../shared/ui/Layout';
 import { EmptyState } from '../shared/States';
-import { ManagementTemplate } from '../features/management/ManagementTemplate';
+import { CustomersPage } from '../features/customers/CustomersPage';
 import { AuthProvider, useAuth } from '../features/auth/AuthProvider';
 import { LoginPage } from '../features/auth/LoginPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
@@ -82,7 +82,7 @@ export function AppRoutes({
                 element={
                   <Protected permission={m.key}>
                     {m.key === 'customers' ? (
-                      <ManagementTemplate />
+                      <CustomersPage />
                     ) : (
                       <Planned label={m.label} />
                     )}
