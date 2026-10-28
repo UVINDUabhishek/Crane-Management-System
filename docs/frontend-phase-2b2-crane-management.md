@@ -48,6 +48,19 @@ Source review found that job creation/reassignment and maintenance scheduling va
 
 Historical records remain linked; neither endpoint physically deletes a crane. The existing three-digit generated suffix (for example `CR080T001`) and all stored crane numbers are unchanged, including after type edits. Existing numbering regression tests remain in place.
 
+### Inactive-crane maintenance restrictions
+
+Maintenance creation and updates require the selected crane to be active.
+
+- `POST /api/maintenance` rejects an inactive crane with HTTP 409 Conflict.
+- `PUT /api/maintenance/{id}` rejects an inactive crane with HTTP 409 Conflict, including when the existing maintenance record references that inactive crane.
+- Validation occurs within the existing transactional scheduling workflow.
+- A rejected request must not modify the persisted maintenance record.
+- Existing maintenance start, completion and cancellation workflows remain unchanged.
+- Crane activation and operational status continue to represent separate business concepts.
+
+**Verification:** Four additional regression tests were added: two service unit tests and two PostgreSQL integration tests. Full Maven verification passed with 552 tests, zero failures, zero errors, zero skipped tests and all JaCoCo coverage thresholds satisfied.
+
 ## Frontend architecture and UX
 
 The five feature files mirror Customer Management without replacing its components. Typed API calls use the shared Axios client and AbortSignal for reads. `craneKeys.all = ['cranes']`; detail keys extend that prefix with the actual ID. Detail/edit fetch current records rather than trusting directory snapshots.
