@@ -205,6 +205,7 @@ export function CranesPage() {
           columns={columns}
           rows={rows.slice(currentPage * size, (currentPage + 1) * size)}
           rowKey={(c) => String(c.id)}
+          isInactive={(c) => !c.active}
           loading={query.isPending}
           loadingLabel="Loading cranes…"
           page={currentPage}
