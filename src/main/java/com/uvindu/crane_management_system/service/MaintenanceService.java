@@ -53,7 +53,7 @@ public class MaintenanceService {
         Crane crane = craneRepository.findById(request.getCraneId())
                 .orElseThrow(() -> BusinessException.notFound("Crane not found"));
 
-        if(!crane.isActive()) {
+        if (!crane.isActive()) {
             throw BusinessException.conflict(
                     "Cannot schedule maintenance for an inactive crane"
             );
