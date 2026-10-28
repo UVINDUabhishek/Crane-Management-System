@@ -53,6 +53,12 @@ public class MaintenanceService {
         Crane crane = craneRepository.findById(request.getCraneId())
                 .orElseThrow(() -> BusinessException.notFound("Crane not found"));
 
+        if(!crane.isActive()) {
+            throw BusinessException.conflict(
+                    "Cannot schedule maintenance for an inactive crane"
+            );
+        }
+
         User maintenancePerson = null;
 
         if (request.getMaintenancePersonId() != null) {
@@ -134,6 +140,12 @@ public class MaintenanceService {
 
         Crane crane = craneRepository.findById(request.getCraneId())
                 .orElseThrow(() -> BusinessException.notFound("Crane not found"));
+
+        if (!crane.isActive()) {
+            throw BusinessException.conflict(
+                    "Cannot update maintenance for an inactive crane"
+            );
+        }
 
         maintenance.setCrane(crane);
         maintenance.setMaintenanceStartDate(request.getMaintenanceStartDate());
