@@ -94,10 +94,16 @@ export function DataTableShell<T>({
                   sx={
                     isInactive?.(row)
                       ? (theme) => ({
-                          bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.09 : 0.045),
+                          bgcolor: alpha(
+                            theme.palette.text.primary,
+                            theme.palette.mode === 'dark' ? 0.09 : 0.045,
+                          ),
                           '& > td': { color: 'text.secondary' },
                           '&:hover': {
-                            bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.14 : 0.075),
+                            bgcolor: alpha(
+                              theme.palette.text.primary,
+                              theme.palette.mode === 'dark' ? 0.14 : 0.075,
+                            ),
                           },
                         })
                       : undefined
