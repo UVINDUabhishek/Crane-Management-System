@@ -36,5 +36,7 @@ export default defineConfig({
     // Full app + MUI + MSW interaction tests take >5s on typical Windows machines.
     // Keep assertions and simulated user behavior intact rather than dropping coverage.
     testTimeout: 15000,
+    // Also serialize direct Vitest/IDE runs, which do not use npm test flags.
+    maxWorkers: 1,
   },
 });

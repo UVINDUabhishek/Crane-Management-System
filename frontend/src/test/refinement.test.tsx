@@ -146,12 +146,17 @@ it('focuses safe cancellation, traps keyboard focus and returns to the trigger',
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus(),
   );
+  const dialog = screen.getByRole('dialog');
   await user.tab({ shift: true });
   // MUI may wrap focus to Cancel or move to Confirm depending on its focus trap.
   // The accessibility contract is that focus stays inside the dialog.
-  expect(screen.getByRole('dialog')).toContainElement(document.activeElement);
+  await waitFor(() =>
+    expect(dialog.contains(document.activeElement)).toBe(true),
+  );
   await user.tab();
-  expect(screen.getByRole('dialog')).toContainElement(document.activeElement);
+  await waitFor(() =>
+    expect(dialog.contains(document.activeElement)).toBe(true),
+  );
   await user.keyboard('{Escape}');
   await waitFor(() => expect(trigger).toHaveFocus());
 });

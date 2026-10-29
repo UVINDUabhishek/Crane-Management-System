@@ -219,3 +219,108 @@ An earlier development run of the revised crane tests had 33 passes and two fail
 Normal full-suite runtime was approximately 34.7 seconds before, and 29.96 / 35.07 / 29.54 seconds after (31.52 seconds average). This modest improvement varies with host load; do not interpret it as a controlled Windows benchmark. In the corrected single-worker run the slowest test was 1.77 seconds, and the previously reported crane create/edit cases took 0.99 / 0.89 seconds. The key reliability improvement is explicit response ordering, rather than relying on a faster machine to win timing races.
 
 Windows 11/PowerShell verification remains a platform limitation of this Linux runner. Run the unchanged `npm run test` in `frontend` after pulling this branch; do not compensate by raising timeouts. Three repeat runs provide useful local stability evidence, not a guarantee under every machine load. Live-backend manual acceptance already reported by the developer is preserved; this test-only task does not claim a new browser acceptance run.
+
+## Final synchronization and configuration correction — 2026-10-29
+
+This section supersedes the earlier test-configuration notes for the latest branch. The remote already introduced a 15,000 ms timeout and single-worker npm command; this task preserves those settings and does not raise the timeout again.
+
+### Confirmed findings
+
+- The cloud checkout started clean at `37db9ae9211934fcb9909e291f1fa2c88097dab4`. Remote feature HEAD was `b659031fba29153e1711b453db8c684353e84bd7`, six commits ahead. The old checkout contained both the 5-second defaults and the exact Confirm-focus assertion reported in the developer's logs. A safe fast-forward brought in all six existing fixes; no local work or history was discarded.
+- This clone's `remote.origin.fetch` mapped only main. The feature branch's configured upstream could not be resolved and a plain fetch would not refresh its tracking ref. The existing main mapping was retained and the feature mapping added with `git remote set-branches --add origin feat/react-phase-2b2-crane-management`; the existing feature branch now tracks its remote correctly. This is local Git configuration, not a committed repository file. The diagnostic command exposes the mappings so another clone can be checked independently.
+- Resolving Vitest configuration from the actual frontend directory showed that npm test used 15,000 ms and one worker. Config-only/direct Vitest resolved 15,000 ms but no worker cap. `maxWorkers: 1` now lives in the shared Vite test config as well, so normal direct/IDE runs get the same defaults. Explicit IDE/CLI overrides can still differ.
+- The remote focus-containment correction introduced two TypeScript errors: `document.activeElement` is `Element | null`, while jest-dom's `toContainElement` typing accepts a narrower element type. Native DOM `dialog.contains(document.activeElement)` preserves the same containment assertion without a cast; `waitFor` allows the real MUI focus trap to settle after both Tab directions. Safe Cancel focus, Escape dismissal and focus restoration remain checked.
+- Prettier reported `frontend/eslint.config.js`; only affected files were formatted. Existing generated-cache exclusions are preserved. There was no evidence here that formatting reverted commits or that MSW gates/application code needed further changes.
+
+The developer's Windows working tree is not accessible from this Linux runner. The stale cloud checkout is confirmed; the precise source of the Windows logs (older clone, unsaved file, old process, alternate config or explicit timeout override) cannot be confirmed remotely. A log showing 5,000 ms or the old Confirm assertion does not match the verified standard command at the latest feature HEAD.
+
+### Files changed in this follow-up
+
+| File | Change |
+| --- | --- |
+| `frontend/vite.config.ts` | Match direct Vitest/IDE worker defaults to npm test; retain 15,000 ms. |
+| `frontend/src/test/refinement.test.tsx` | Type-correct, asynchronous focus containment checks; preserve all keyboard assertions. |
+| `frontend/scripts/test-environment.mjs` | Read-only diagnostics using Vitest's actual config resolver: root/config paths, Git branch/SHA/upstream/refspecs/status, Node/platform, npm command and effective defaults. No automatic Git mutations. |
+| `frontend/package.json` | Add `npm run test:doctor`; existing test command unchanged. |
+| `frontend/eslint.config.js` | Fix formatting and apply existing Node globals to the diagnostic script; preserve lint rules/exclusions. |
+| `docs/frontend-phase-2b2-crane-management.md` | Findings, execution results and safe Windows synchronization instructions. |
+
+No backend, application components, MSW gates, inactive-row styling, dependencies or lockfiles changed. All 129 tests remain enabled.
+
+### Verification on Linux
+
+The fetched baseline passed 129/129 tests in 59.69 seconds, but typecheck exposed the two focus assertion errors and format:check exposed the ESLint-config formatting problem. These failures were corrected rather than bypassed.
+
+| Final full-suite run | Passed | Failed | Skipped | Duration |
+| --- | ---: | ---: | ---: | --- |
+| 1 | 129 | 0 | 0 | 61.84 s |
+| 2 | 129 | 0 | 0 | 59.07 s |
+| 3 | 129 | 0 | 0 | 60.09 s |
+
+All three runs were consecutive with the standard npm command and the remote's existing 15-second timeout. `npm run typecheck`, `npm run lint`, `npm run format:check`, and `npm run build` passed after the corrections. `npm run test:doctor` also ran successfully. Node v24.19.0 / npm 11.9.0 were used. No tests were added, removed or skipped.
+
+`npm run test:doctor` resolves both npm and direct Vitest to the actual `frontend/vite.config.ts`, jsdom, `src/test/setup.ts`, one worker and 15,000 ms. Test runs use the existing `npm run test` command without additional overrides. No new browser/Windows acceptance or backend test run is claimed. Existing non-fatal Zod annotation build warnings remain visible.
+
+### Exact Windows 11 / PowerShell verification
+
+1. Stop old test/watch tasks in the VS Code terminals and Testing panel. Save intentional edits. In the intended repository clone, inspect and synchronize safely:
+
+```powershell
+Set-Location 'C:\path\to\Crane-Management-System'
+$branch = 'feat/react-phase-2b2-crane-management'
+git rev-parse --show-toplevel
+git branch --show-current
+git status --short
+if (git status --porcelain) {
+    throw 'Working tree has local work. Review and preserve it before synchronizing; do not reset or clean it.'
+}
+git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
+if ($LASTEXITCODE -ne 0) { throw 'Fetch failed; stop and inspect.' }
+git switch $branch
+if ($LASTEXITCODE -ne 0) { throw 'Branch switch failed; stop and inspect.' }
+git merge --ff-only "origin/$branch"
+if ($LASTEXITCODE -ne 0) { throw 'History diverged; preserve commits and review before continuing.' }
+git rev-parse HEAD
+git rev-parse "origin/$branch"
+git rev-list --left-right --count "HEAD...origin/$branch"
+git config --get-all remote.origin.fetch
+```
+
+Expected: the intended branch, HEAD matching the latest remote feature SHA, and `0 0` divergence. The explicit fetch above works even for a main-only fetch mapping. If the mappings omit both `refs/heads/*` and this feature branch, add only the missing mapping, retaining other mappings:
+
+```powershell
+git remote set-branches --add origin feat/react-phase-2b2-crane-management
+git fetch origin
+git branch --set-upstream-to=origin/feat/react-phase-2b2-crane-management
+```
+
+2. Anchor subsequent commands to this clone's frontend, not another VS Code workspace folder:
+
+```powershell
+$repo = git rev-parse --show-toplevel
+Set-Location (Join-Path $repo 'frontend')
+node --version
+npm --version
+npm ci
+if ($LASTEXITCODE -ne 0) { throw 'Dependency install failed.' }
+npm run test:doctor
+if ($LASTEXITCODE -ne 0) { throw 'Test configuration could not be resolved.' }
+```
+
+Expected diagnostic output: branch `feat/react-phase-2b2-crane-management`, your newly synchronized SHA, frontend root/config/setup paths in this clone, command `vitest run --maxWorkers=1 --testTimeout=15000`, and `maxWorkers: 1` / `testTimeout: 15000` for **both** npmTest and directVitest. Git upstream metadata reflects the last fetch. Do not delete the lockfile or discard local changes to troubleshoot this.
+
+3. Run the requested checks with failure detection:
+
+```powershell
+foreach ($run in 1..3) {
+    Write-Host "Full suite run $run"
+    npm run test
+    if ($LASTEXITCODE -ne 0) { throw "Test run $run failed." }
+}
+foreach ($check in 'typecheck', 'lint', 'format:check', 'build') {
+    npm run $check
+    if ($LASTEXITCODE -ne 0) { throw "$check failed." }
+}
+```
+
+Each test run must report 129 passed, no failures/skips. If terminal output still says 5,000 ms, inspect the printed npm script and diagnostic paths/SHA first. An explicit editor `--testTimeout=5000`, alternate `--config`, per-test override, old watch process or different workspace can override/bypass the standard invocation. Restart the VS Code test runner against this frontend's `vite.config.ts` after updating; compare its logged command to the terminal run. Do not increase the timeout again to conceal a mismatch.
