@@ -327,37 +327,85 @@ it.each([400, 403, 404, 409, 500])(
       expect(await screen.findByText('Registration rejected')).toBeVisible();
   },
 );
+
 it('requires confirmation, blocks pending duplicates, refreshes the response and retains directory row', async () => {
   const deleted = vi.fn();
+
+  // Keep the API request pending until the test explicitly releases it.
+  let finishRequest!: () => void;
+
+  const requestGate = new Promise<void>((resolve) => {
+    finishRequest = resolve;
+  });
+
   server.use(
     http.patch('/api/customers/42/activation', async ({ request }) => {
       expect(await request.json()).toEqual({ active: false });
+
       deleted();
-      await delay(250);
+
+      // Wait until pending-state assertions have finished.
+      await requestGate;
+
       records = [{ ...customer, active: false }];
+
       return HttpResponse.json(records[0]);
     }),
   );
+
   const user = await mount();
+
+  // Cancel must not send a request.
   let dialog = await action(user, 'Deactivate');
-  expect(within(dialog).getByText(/change activation again/)).toBeVisible();
-  await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
-  expect(deleted).not.toHaveBeenCalled();
-  dialog = await action(user, 'Deactivate');
+
+  expect(
+    within(dialog).getByText(/change activation again/),
+  ).toBeVisible();
+
   await user.click(
-    within(dialog).getByRole('button', { name: 'Deactivate customer' }),
+    within(dialog).getByRole('button', { name: 'Cancel' }),
   );
-  expect(screen.getByRole('button', { name: 'Deactivating…' })).toBeDisabled();
-  expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+
+  expect(deleted).not.toHaveBeenCalled();
+
+  // Confirm deactivation.
+  dialog = await action(user, 'Deactivate');
+
+  await user.click(
+    within(dialog).getByRole('button', {
+      name: 'Deactivate customer',
+    }),
+  );
+
+  // The API is still pending at this point.
+  expect(
+    screen.getByRole('button', { name: 'Deactivating…' }),
+  ).toBeDisabled();
+
+  expect(
+    screen.getByRole('button', { name: 'Cancel' }),
+  ).toBeDisabled();
+
+  // Escape must not close the dialog while the request is pending.
   await user.keyboard('{Escape}');
+
   expect(screen.getByRole('dialog')).toBeVisible();
+
+  // Allow the simulated backend to finish.
+  finishRequest();
+
+  // Verify successful completion.
   await screen.findByText(/Customer activation updated\./);
+
   expect(deleted).toHaveBeenCalledTimes(1);
+
   expect(screen.getByText('Atlas Lifting')).toBeVisible();
+
   expect(
     screen.queryByRole('button', { name: /Reactivate/ }),
   ).not.toBeInTheDocument();
 });
+
 it.each([403, 404, 409, 500])(
   'keeps deactivation failures visible in confirmation: %s',
   async (status) => {
