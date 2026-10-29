@@ -172,3 +172,50 @@ The directory uses the existing full-array API and client-side filtering/paginat
 Safety relies on persisted lifecycle states, not a speculative inference from crane.status or dates. Legacy inactive cranes with unfinished work can be reactivated, but false requests remain blocked until work is finished/canceled. Existing operational-status synchronization and scheduling policies are unchanged; an active crane can still be unavailable for a specific job. Historical links remain stored and were checked for canceled jobs and maintenance. No migration/repair of historical inconsistencies is performed.
 
 Full live-browser acceptance, screen-reader evaluation and business approval of the documented deactivation policy remain with the reviewer. No PR merge, ready-for-review transition or work on subsequent modules is authorized by this delivery.
+
+## Frontend test stabilization — 2026-10-29
+
+This follow-up starts from remote branch commit `25943c6` and preserves its manually gated Customer activation test, all maintenance corrections and the theme-aware inactive-row styling. No production source, dependency, lockfile, npm script, Vitest worker setting or timeout is changed. PR #7 remains draft.
+
+### Diagnosis and corrections
+
+The developer reported eight 5-second timeouts on Windows 11. The unmodified latest branch passed 129/129 in this Linux environment (approximately 34.7 seconds from Vitest's JSON timestamps). Those Windows failures were not reproduced here, so host-specific CPU/worker contention is a contributing hypothesis, not a proven configuration defect. The actual test weaknesses were:
+
+- Each customer/crane scenario typed login and business fields character by character, repeatedly exercising MUI and form updates even when the assertion concerned only final values. Several customer tests took 2–2.5 seconds locally before the change. Final-value field setup/search now uses `fireEvent.change`, including safe numeric input conversion through the actual registered inputs. Real sign-in, `/auth/login`, `/auth/me`, Protected routes and permission checks still run. Auth-specific typing, user clicks/double clicks, Escape and focus checks remain.
+- Fixed 150–400 ms MSW delays made loading/pending checks depend on execution speed: the response could complete before an assertion, or Escape could be sent after pending had ended. The small `createRequestGate` helper announces request start and holds the response until explicitly released in `finally`. Both activation directions and creation test duplicate submission, disabled actions and Escape before release, then verify completion/refetch. Customer activation retains the developer's Promise-based correction with this shared cleanup pattern.
+- Several failure tests waited only for an enabled submit button. That button could still be enabled before the request started, producing a false pass. They now wait for the actual normalized error, including the 403 Access denied state, then verify retained inputs/activation and no success message.
+- Dialog cancellation explicitly waits for removal before opening the next dialog. Existing transitions, focus restoration, query invalidation, MSW unhandled-request errors, test isolation and cleanup are preserved. No evidence justified changing those implementations or bypassing authentication.
+
+Production pending guards behaved correctly. No production defect was identified or altered in this task. Inactive rows remain muted, readable and interactive. No tests were removed, skipped or added; the suite remains 129 cases in five files. No warnings were suppressed.
+
+Changed files:
+
+| File | Purpose |
+| --- | --- |
+| `frontend/src/test/cranes.test.tsx` | Efficient field setup; deterministic loading/create/activation; retained payload, role, filtering, refetch and focus coverage. |
+| `frontend/src/test/customers.test.tsx` | Same improvements; preserve/strengthen existing gated activation correction and await real errors. |
+| `frontend/src/test/app.test.tsx` | Gate identity/dashboard loading responses instead of relying on elapsed milliseconds; retain realistic login typing. |
+| `frontend/src/test/requestGate.ts` | Small shared MSW response gate with request-start notification and explicit release. |
+| `docs/frontend-phase-2b2-crane-management.md` | This diagnostic and verification record. |
+
+### Executed verification
+
+Every run below used the unchanged default 5-second test timeout. Whole-suite runs were sequential, not overlapping.
+
+| Run | Passed | Failed | Skipped | Duration |
+| --- | ---: | ---: | ---: | --- |
+| Unmodified branch, normal workers, JSON reporter | 129 | 0 | 0 | ~34.7 s |
+| Corrected cranes, `--maxWorkers=1` | 35 | 0 | 0 | 19.54 s |
+| Corrected customers, `--maxWorkers=1` | 46 | 0 | 0 | 30.27 s |
+| Complete suite, `--maxWorkers=1` | 129 | 0 | 0 | 57.28 s |
+| Standard `npm run test`, repeat 1 | 129 | 0 | 0 | 29.96 s |
+| Standard `npm run test`, repeat 2 | 129 | 0 | 0 | 35.07 s |
+| Standard `npm run test`, repeat 3 | 129 | 0 | 0 | 29.54 s |
+
+An earlier development run of the revised crane tests had 33 passes and two failures: newly added clicks on disabled MUI buttons were correctly rejected by user-event's pointer checks. Those invalid interactions were removed; explicit disabled assertions, real double clicks on the enabled submit button, single-request counts and pending Escape checks remain. The corrected targeted run and full runs above passed. One initial command was invoked from the repository root rather than `frontend`; it exited before running tests and was rerun in the correct directory.
+
+`npm run typecheck`, `npm run lint`, `npm run format:check` and `npm run build` all passed. Only the four edited test/helper files were formatted. Existing non-fatal Zod annotation build warnings remain visible. No Java changes were made and the backend suite was not rerun for this frontend-only follow-up; earlier backend verification above is historical.
+
+Normal full-suite runtime was approximately 34.7 seconds before, and 29.96 / 35.07 / 29.54 seconds after (31.52 seconds average). This modest improvement varies with host load; do not interpret it as a controlled Windows benchmark. In the corrected single-worker run the slowest test was 1.77 seconds, and the previously reported crane create/edit cases took 0.99 / 0.89 seconds. The key reliability improvement is explicit response ordering, rather than relying on a faster machine to win timing races.
+
+Windows 11/PowerShell verification remains a platform limitation of this Linux runner. Run the unchanged `npm run test` in `frontend` after pulling this branch; do not compensate by raising timeouts. Three repeat runs provide useful local stability evidence, not a guarantee under every machine load. Live-backend manual acceptance already reported by the developer is preserved; this test-only task does not claim a new browser acceptance run.

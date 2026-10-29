@@ -1,7 +1,13 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import {
+  render,
+  screen,
+  within,
+  waitFor,
+  fireEvent,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { http, HttpResponse, delay } from 'msw';
+import { http, HttpResponse } from 'msw';
 import { ThemeProvider } from '@mui/material';
 import { MemoryRouter, Link } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -9,6 +15,7 @@ import { AppRoutes, createQueryClient } from '../app/App';
 import { createAppTheme } from '../app/theme';
 import { AuthProvider } from '../features/auth/AuthProvider';
 import { server } from './setup';
+import { createRequestGate } from './requestGate';
 import type { Role } from '../shared/permissions';
 import {
   craneFields,
@@ -72,8 +79,13 @@ async function mount(role: Role = 'ADMIN') {
     </ThemeProvider>,
   );
   const user = userEvent.setup();
-  await user.type(screen.getByLabelText('Email address'), 'alex@example.com');
-  await user.type(screen.getByLabelText('Password'), 'password');
+  // Exercise real authentication, without replaying every setup keystroke.
+  fireEvent.change(screen.getByLabelText('Email address'), {
+    target: { value: 'alex@example.com' },
+  });
+  fireEvent.change(screen.getByLabelText('Password'), {
+    target: { value: 'password' },
+  });
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
   await screen.findByRole('heading', { name: 'Operations at a glance' });
   await user.click(screen.getByRole('link', { name: 'Direct crane route' }));
@@ -121,15 +133,13 @@ it.each([
 ] as const)('searches %s', async (key) => {
   const user = await mount();
   await screen.findByText('CR080T001');
-  await user.type(
-    screen.getByRole('textbox', { name: 'Search cranes' }),
-    ` ${crane[key]!.toUpperCase()} `,
-  );
+  fireEvent.change(screen.getByRole('textbox', { name: 'Search cranes' }), {
+    target: { value: ` ${crane[key]!.toUpperCase()} ` },
+  });
   expect(screen.getByText('CR080T001')).toBeVisible();
-  await user.type(
-    screen.getByRole('textbox', { name: 'Search cranes' }),
-    'absent',
-  );
+  fireEvent.change(screen.getByRole('textbox', { name: 'Search cranes' }), {
+    target: { value: 'absent' },
+  });
   expect(screen.getByText('No matching cranes')).toBeVisible();
   await user.click(screen.getAllByRole('button', { name: 'Clear filters' })[0]);
   expect(screen.getByText('CR080T001')).toBeVisible();
@@ -154,16 +164,23 @@ it('combines activation and operational filters and resets pagination', async ()
   expect(screen.getByText('CR080T005')).toBeVisible();
 });
 it('shows loading and empty API results', async () => {
+  const gate = createRequestGate();
   server.use(
     http.get('/api/cranes', async () => {
-      await delay(250);
+      await gate.wait();
       return HttpResponse.json([]);
     }),
   );
-  await mount();
-  expect(await screen.findByText('Loading cranes…')).toBeVisible();
+  try {
+    await mount();
+    await gate.started;
+    expect(await screen.findByText('Loading cranes…')).toBeVisible();
+  } finally {
+    gate.release();
+  }
   expect(await screen.findByText('No cranes yet')).toBeVisible();
 });
+
 it('retries list failures', async () => {
   server.use(
     http.get('/api/cranes', () => new HttpResponse(null, { status: 500 })),
@@ -196,14 +213,13 @@ it.each(['create', 'edit'])(
     else await user.click(screen.getByRole('button', { name: 'Add crane' }));
     await screen.findByLabelText(/Serial number/);
     for (const [key, label] of Object.entries(craneFields)) {
-      const input = screen.getByLabelText(label, { exact: false });
-      await user.clear(input);
-      await user.type(
-        input,
-        String(
-          formDefaults(crane)[key as keyof ReturnType<typeof formDefaults>],
-        ),
-      );
+      fireEvent.change(screen.getByLabelText(label, { exact: false }), {
+        target: {
+          value: String(
+            formDefaults(crane)[key as keyof ReturnType<typeof formDefaults>],
+          ),
+        },
+      });
     }
     expect(
       screen.queryByRole('textbox', { name: 'Crane number' }),
@@ -250,31 +266,57 @@ it.each([400, 404, 409, 500])(
 );
 it('confirms, cancels, blocks pending and reverses activation with server refresh', async () => {
   const patch = vi.fn();
-  server.use(
-    http.patch('/api/cranes/42/activation', async ({ request }) => {
-      const body = (await request.json()) as { active: boolean };
-      patch(body);
-      await delay(250);
-      records = [{ ...crane, active: body.active }];
-      return HttpResponse.json(records[0]);
-    }),
-  );
   const user = await mount();
   const control = await screen.findByRole('switch', {
     name: 'Activation for CR080T001',
   });
+  server.use(
+    http.patch('/api/cranes/42/activation', () => {
+      patch();
+      return HttpResponse.json(crane);
+    }),
+  );
   await user.click(control);
   await user.click(screen.getByRole('button', { name: 'Cancel' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
   expect(patch).not.toHaveBeenCalled();
   for (const active of [false, true]) {
-    await user.click(control);
-    await user.click(
-      await screen.findByRole('button', {
-        name: active ? 'Activate crane' : 'Deactivate crane',
+    const gate = createRequestGate();
+    server.use(
+      http.patch('/api/cranes/42/activation', async ({ request }) => {
+        const body = (await request.json()) as { active: boolean };
+        patch(body);
+        await gate.wait();
+        records = [{ ...crane, active: body.active }];
+        return HttpResponse.json(records[0]);
       }),
     );
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-    await user.keyboard('{Escape}');
+    const previousCalls = patch.mock.calls.length;
+    try {
+      await user.click(control);
+      const dialog = await screen.findByRole('dialog');
+      await user.dblClick(
+        within(dialog).getByRole('button', {
+          name: active ? 'Activate crane' : 'Deactivate crane',
+        }),
+      );
+      await gate.started;
+      const pending = within(dialog).getByRole('button', {
+        name: active ? 'Activating…' : 'Deactivating…',
+      });
+      const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
+      expect(pending).toBeDisabled();
+      expect(cancel).toBeDisabled();
+      expect(control).toBeDisabled();
+      expect(control).toHaveProperty('checked', !active);
+      await user.keyboard('{Escape}');
+      expect(dialog).toBeVisible();
+      expect(patch).toHaveBeenCalledTimes(previousCalls + 1);
+    } finally {
+      gate.release();
+    }
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
@@ -282,7 +324,9 @@ it('confirms, cancels, blocks pending and reverses activation with server refres
     expect(patch).toHaveBeenLastCalledWith({ active });
   }
   expect(patch).toHaveBeenCalledTimes(2);
+  expect(calls).toBeGreaterThanOrEqual(3);
 });
+
 it('preserves activation on conflict and permits retry', async () => {
   server.use(
     http.patch('/api/cranes/42/activation', () =>
@@ -307,29 +351,41 @@ it('preserves activation on conflict and permits retry', async () => {
 });
 it('prevents invalid create submissions and duplicate pending saves', async () => {
   const save = vi.fn();
+  const gate = createRequestGate();
   server.use(
     http.post('/api/cranes', async ({ request }) => {
       save(await request.json());
-      await delay(400);
+      await gate.wait();
       return HttpResponse.json(crane, { status: 201 });
     }),
   );
-  const user = await mount();
-  await user.click(screen.getByRole('button', { name: 'Add crane' }));
-  await user.click(screen.getByRole('button', { name: 'Save crane' }));
-  expect(await screen.findAllByText('This field is required.')).toHaveLength(4);
-  expect(save).not.toHaveBeenCalled();
-  for (const [key, label] of Object.entries(craneFields)) {
-    await user.type(
-      screen.getByLabelText(label, { exact: false }),
-      String(formDefaults(crane)[key as keyof ReturnType<typeof formDefaults>]),
+  try {
+    const user = await mount();
+    await user.click(screen.getByRole('button', { name: 'Add crane' }));
+    await user.click(screen.getByRole('button', { name: 'Save crane' }));
+    expect(await screen.findAllByText('This field is required.')).toHaveLength(
+      4,
     );
+    expect(save).not.toHaveBeenCalled();
+    for (const [key, label] of Object.entries(craneFields)) {
+      fireEvent.change(screen.getByLabelText(label, { exact: false }), {
+        target: {
+          value: String(
+            formDefaults(crane)[key as keyof ReturnType<typeof formDefaults>],
+          ),
+        },
+      });
+    }
+    await user.dblClick(screen.getByRole('button', { name: 'Save crane' }));
+    await gate.started;
+    expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(save).toHaveBeenCalledTimes(1);
+  } finally {
+    gate.release();
   }
-  await user.dblClick(screen.getByRole('button', { name: 'Save crane' }));
-  expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
-  expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-  await user.keyboard('{Escape}');
-  expect(screen.getByRole('dialog')).toBeVisible();
   await screen.findByText('Crane created.');
   expect(save).toHaveBeenCalledTimes(1);
 });
