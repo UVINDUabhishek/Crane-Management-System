@@ -8,17 +8,12 @@ import {
   Route,
   Routes,
 } from 'react-router-dom';
-import {
-  Button,
-  CssBaseline,
-  Stack,
-  ThemeProvider,
-  Typography,
-} from '@mui/material';
+import { CssBaseline, Stack, ThemeProvider, Typography } from '@mui/material';
 import { AppShell } from './AppShell';
 import { createAppTheme } from './theme';
-import { PageHeader, SectionCard } from '../shared/ui/Layout';
-import { EmptyState } from '../shared/States';
+import { WorkflowPage } from '../features/workflows/WorkflowPage';
+import { ReportsPage } from '../features/workflows/ReportsPage';
+import { UsersPage } from '../features/workflows/UsersPage';
 import { CranesPage } from '../features/cranes/CranesPage';
 import { CustomersPage } from '../features/customers/CustomersPage';
 import { AuthProvider, useAuth } from '../features/auth/AuthProvider';
@@ -38,28 +33,6 @@ export function Protected({
   if (!user) return <Navigate to="/login" replace />;
   if (permission && !can(user.role, permission)) return <AccessDenied />;
   return children ?? <Outlet />;
-}
-function Planned({ label }: { label: string }) {
-  return (
-    <>
-      <PageHeader
-        title={label}
-        description="Your next operations workspace."
-        eyebrow="PLANNED MODULE"
-      />
-      <SectionCard title="Workspace coming soon">
-        <EmptyState
-          title="A new workspace is on the way"
-          description="This module is planned for a later phase. Records cannot be managed here yet."
-          action={
-            <Button component={Link} to="/">
-              Back to overview
-            </Button>
-          }
-        />
-      </SectionCard>
-    </>
-  );
 }
 export function AppRoutes({
   dark = false,
@@ -86,8 +59,12 @@ export function AppRoutes({
                       <CustomersPage />
                     ) : m.key === 'cranes' ? (
                       <CranesPage />
+                    ) : m.key === 'reports' ? (
+                      <ReportsPage />
+                    ) : m.key === 'users' ? (
+                      <UsersPage />
                     ) : (
-                      <Planned label={m.label} />
+                      <WorkflowPage module={m.key} />
                     )}
                   </Protected>
                 }

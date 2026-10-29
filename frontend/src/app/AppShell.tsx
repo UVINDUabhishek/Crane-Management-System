@@ -41,6 +41,7 @@ import { useAuth } from '../features/auth/AuthProvider';
 import { can, modules, type Permission } from '../shared/permissions';
 const icons = {
   dashboard: DashboardOutlined,
+  reports: ReceiptLongOutlined,
   cranes: ConstructionOutlined,
   customers: PeopleOutline,
   quotations: DescriptionOutlined,
@@ -51,7 +52,7 @@ const icons = {
   users: ManageAccountsOutlined,
 };
 const groups: { title: string; keys: Permission[] }[] = [
-  { title: 'Workspace', keys: ['dashboard'] },
+  { title: 'Workspace', keys: ['dashboard', 'reports'] },
   {
     title: 'Operations',
     keys: ['cranes', 'jobs', 'timesheets', 'maintenance'],
@@ -196,24 +197,6 @@ export function AppShell({
                             },
                           }}
                         />
-                        {key !== 'dashboard' &&
-                          key !== 'customers' &&
-                          key !== 'cranes' && (
-                            <Box
-                              component="span"
-                              sx={{
-                                fontSize: '.62rem',
-                                color: 'navigation.text',
-                                border: 1,
-                                borderColor: 'navigation.border',
-                                borderRadius: 1,
-                                px: 0.6,
-                                py: 0.15,
-                              }}
-                            >
-                              Planned
-                            </Box>
-                          )}
                       </ListItemButton>
                     </ListItem>
                   );

@@ -2,4 +2,4 @@
 *.cmd text eol=crlf
 
 # Keep Prettier input stable on Windows and Unix.
-frontend/** text eol=lf
+frontend/** text=auto eol=lf
