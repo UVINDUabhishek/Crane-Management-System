@@ -201,9 +201,7 @@ it('renders server revenue and restricts report options', async () => {
   expect(
     screen.queryByRole('option', { name: 'revenue monthly' }),
   ).not.toBeInTheDocument();
-  await user.click(
-    screen.getByRole('option', { name: 'revenue summary', exact: true }),
-  );
+  await user.click(screen.getByRole('option', { name: 'revenue summary' }));
   await user.click(screen.getByRole('button', { name: 'Run report' }));
   expect(await screen.findAllByText('8500')).toHaveLength(2);
 });
