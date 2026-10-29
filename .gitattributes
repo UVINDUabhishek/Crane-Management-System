@@ -1,2 +1,5 @@
 /mvnw text eol=lf
 *.cmd text eol=crlf
+
+# Keep Prettier input stable on Windows and Unix.
+frontend/** text eol=lf
