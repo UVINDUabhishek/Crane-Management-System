@@ -3,7 +3,7 @@ import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Link } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { http, HttpResponse, delay } from 'msw';
+import { http, HttpResponse } from 'msw';
 import { AppRoutes, createQueryClient } from '../app/App';
 import { AuthProvider } from '../features/auth/AuthProvider';
 import { api, ApiError, normalizeError } from '../shared/api';
@@ -11,6 +11,7 @@ import { roles, type Role } from '../shared/permissions';
 import { ThemeProvider } from '@mui/material';
 import { createAppTheme } from '../app/theme';
 import { server } from './setup';
+import { createRequestGate } from './requestGate';
 const jwt = (seconds = 3600) =>
   `header.${btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + seconds }))}.signature`;
 function mock(role: Role = 'ADMIN', seconds = 3600) {
@@ -165,9 +166,10 @@ describe('session and routing', () => {
   });
   it('shows loading while current user is fetched', async () => {
     mock();
+    const gate = createRequestGate();
     server.use(
       http.get('/api/auth/me', async () => {
-        await delay(150);
+        await gate.wait();
         return HttpResponse.json({
           id: 1,
           username: 'Alex',
@@ -176,11 +178,16 @@ describe('session and routing', () => {
         });
       }),
     );
-    mount();
-    await signIn();
-    expect(
-      await screen.findByRole('button', { name: 'Signing in…' }),
-    ).toBeDisabled();
+    try {
+      mount();
+      await signIn();
+      await gate.started;
+      expect(
+        await screen.findByRole('button', { name: 'Signing in…' }),
+      ).toBeDisabled();
+    } finally {
+      gate.release();
+    }
     expect(await screen.findByText('Operations at a glance')).toBeVisible();
   });
   it('handles identity failure without opening the workspace', async () => {
@@ -251,18 +258,24 @@ describe('dashboard', () => {
   });
   it('shows loading then counts', async () => {
     mock();
+    const gate = createRequestGate();
     server.use(
       http.get('/api/dashboard', async () => {
-        await delay(200);
+        await gate.wait();
         return HttpResponse.json({ totalCranes: 9 });
       }),
     );
-    mount();
-    await signIn();
-    expect(await screen.findByText('Loading dashboard…')).toBeVisible();
-    expect(
-      screen.getByRole('heading', { name: 'Operations at a glance' }),
-    ).toBeVisible();
+    try {
+      mount();
+      await signIn();
+      await gate.started;
+      expect(await screen.findByText('Loading dashboard…')).toBeVisible();
+      expect(
+        screen.getByRole('heading', { name: 'Operations at a glance' }),
+      ).toBeVisible();
+    } finally {
+      gate.release();
+    }
     expect(await screen.findByText('9')).toBeVisible();
   });
   it('handles empty data', async () => {

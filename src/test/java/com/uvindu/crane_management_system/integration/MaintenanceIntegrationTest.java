@@ -50,4 +50,83 @@ class MaintenanceIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(asRole(get("/api/maintenance"), "finance@test.local"))
                 .andExpect(status().isForbidden());
     }
+    @Test
+    void rejectsCreatingMaintenanceForInactiveCrane() throws Exception {
+
+        // Arrange
+        Crane crane = fixtures.fixtureCrane();
+        crane.setActive(false);
+        craneRepository.saveAndFlush(crane);
+
+        long initialCount = maintenanceRepository.count();
+
+        // Act & Assert
+        mockMvc.perform(json(
+                        authorized(post("/api/maintenance")),
+                        fixtures.maintenanceBody(crane.getId())
+                ))
+                .andExpect(status().isConflict());
+
+        // Verify PostgreSQL remains unchanged
+        assertThat(maintenanceRepository.count())
+                .isEqualTo(initialCount);
+
+        assertThat(craneRepository.findById(crane.getId())
+                .orElseThrow()
+                .isActive()).isFalse();
+    }
+
+    @Test
+    void rejectsUpdatingMaintenanceToInactiveCrane() throws Exception {
+
+        // Arrange: create scheduled maintenance with an active crane
+        Maintenance maintenance = createMaintenance();
+
+        Long originalCraneId = maintenance.getCrane().getId();
+        Long maintenanceId = maintenance.getId();
+        String originalDescription = maintenance.getDescription();
+
+        // Create another crane
+        Crane inactiveCrane = new Crane();
+
+        inactiveCrane.setCraneNumber("CR080T999");
+        inactiveCrane.setType("080T");
+        inactiveCrane.setCapacity(80);
+        inactiveCrane.setManufacturer("Test Manufacturer");
+        inactiveCrane.setSerialNumber("INACTIVE-TEST-CRANE");
+        inactiveCrane.setYear(2022);
+        inactiveCrane.setStatus(CraneStatus.AVAILABLE);
+        inactiveCrane.setLocation("Colombo");
+        inactiveCrane.setActive(false);
+
+        inactiveCrane = craneRepository.saveAndFlush(inactiveCrane);
+
+        // Act: attempt to reassign maintenance to the inactive crane
+        mockMvc.perform(json(
+                        authorized(put("/api/maintenance/{id}", maintenanceId)),
+                        """
+                        {
+                          "craneId": %d,
+                          "maintenanceStartDate": "2026-11-15",
+                          "maintenanceEndDate": "2026-11-16",
+                          "maintenanceType": "PREVENTIVE",
+                          "description": "Should not be saved"
+                        }
+                        """.formatted(inactiveCrane.getId())
+                ))
+                .andExpect(status().isConflict());
+
+        // Assert: PostgreSQL record must remain unchanged
+        Maintenance persisted = maintenanceRepository.findById(maintenanceId)
+                .orElseThrow();
+
+        assertThat(persisted.getCrane().getId())
+                .isEqualTo(originalCraneId);
+
+        assertThat(persisted.getDescription())
+                .isEqualTo(originalDescription);
+
+        assertThat(persisted.getStatus())
+                .isEqualTo(MaintenanceStatus.SCHEDULED);
+    }
 }

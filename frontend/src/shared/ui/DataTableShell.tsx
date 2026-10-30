@@ -17,6 +17,7 @@ import {
   TableRow,
 } from '@mui/material';
 import { useId, useRef, type ReactNode, type RefObject } from 'react';
+import { alpha } from '@mui/material/styles';
 import { useMediaQuery } from '@mui/material';
 import { LoadingState } from '../States';
 export interface Column<T> {
@@ -30,6 +31,7 @@ export function DataTableShell<T>({
   columns,
   rows,
   rowKey,
+  isInactive,
   toolbar,
   filters,
   empty,
@@ -45,6 +47,8 @@ export function DataTableShell<T>({
   columns: Column<T>[];
   rows: T[];
   rowKey: (row: T) => string;
+  /** Visually distinguish inactive records without disabling row actions. */
+  isInactive?: (row: T) => boolean;
   toolbar?: ReactNode;
   filters?: ReactNode;
   empty: ReactNode;
@@ -84,7 +88,27 @@ export function DataTableShell<T>({
           <TableBody>
             {!loading &&
               rows.map((row) => (
-                <TableRow hover key={rowKey(row)}>
+                <TableRow
+                  hover
+                  key={rowKey(row)}
+                  sx={
+                    isInactive?.(row)
+                      ? (theme) => ({
+                          bgcolor: alpha(
+                            theme.palette.text.primary,
+                            theme.palette.mode === 'dark' ? 0.09 : 0.045,
+                          ),
+                          '& > td': { color: 'text.secondary' },
+                          '&:hover': {
+                            bgcolor: alpha(
+                              theme.palette.text.primary,
+                              theme.palette.mode === 'dark' ? 0.14 : 0.075,
+                            ),
+                          },
+                        })
+                      : undefined
+                  }
+                >
                   {columns.map((c) => (
                     <TableCell key={c.key} align={c.align}>
                       {c.render(row)}
