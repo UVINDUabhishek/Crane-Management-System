@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import {
   Alert,
+  Box,
+  Chip,
   Button,
   Dialog,
   DialogActions,
@@ -11,6 +13,15 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import {
+  directories,
+  singular,
+  headings,
+  Value,
+  RowMenu,
+  Metrics,
+  fieldSection,
+} from './presentation';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, normalizeError } from '../../shared/api';
@@ -40,10 +51,22 @@ function Input({
     enabled: !!field.lookup,
   });
   const items =
-    options.data?.map((r) => ({
-      id: String(r.id),
-      label: String(r.label ?? r.jobCardNumber ?? r.id),
-    })) ?? [];
+    options.data
+      ?.filter(
+        (r) =>
+          field.lookup !== '/job-card' ||
+          r.status === 'PENDING' ||
+          String(r.id) === String(value),
+      )
+      .map((r) => ({
+        id: String(r.id),
+        label: String(
+          r.label ??
+            (r.jobCardNumber
+              ? `${r.jobCardNumber} · ${r.customer ?? ''}`
+              : r.id),
+        ),
+      })) ?? [];
   const current = String(value ?? '');
   return (
     <Stack spacing={1}>
@@ -136,6 +159,12 @@ export function RecordForm({
       aria-labelledby="record-form-title"
     >
       <DialogTitle id="record-form-title">{title}</DialogTitle>
+      {title === 'Add Job Card' && (
+        <Alert severity="info" sx={{ mx: 3 }}>
+          You will be recorded as the salesperson. Operator assignment is
+          optional.
+        </Alert>
+      )}
       <form
         onSubmit={handleSubmit(async (values) => {
           if (lock.current) return;
@@ -196,18 +225,44 @@ export function RecordForm({
             sx={{ border: 0, p: 0, m: 0 }}
           >
             {mutation.isError && <ErrorState error={mutation.error} />}{' '}
-            {fields.map((f) => (
-              <Input
-                key={f.key}
-                field={f}
-                value={watch(f.key)}
-                onChange={(v) => {
-                  setValue(f.key, v);
-                  clearErrors(f.key);
-                }}
-                error={errors[f.key]?.message}
-              />
-            ))}
+            {Array.from(new Set(fields.map((f) => fieldSection(f.key)))).map(
+              (section) => (
+                <Box key={section} component="section">
+                  <Typography
+                    variant="overline"
+                    color="text.secondary"
+                    sx={{ display: 'block', mb: 1.5 }}
+                  >
+                    {section}
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: {
+                        xs: '1fr',
+                        sm: 'repeat(2,minmax(0,1fr))',
+                      },
+                      gap: 2,
+                    }}
+                  >
+                    {fields
+                      .filter((f) => fieldSection(f.key) === section)
+                      .map((f) => (
+                        <Input
+                          key={f.key}
+                          field={f}
+                          value={watch(f.key)}
+                          onChange={(v) => {
+                            setValue(f.key, v);
+                            clearErrors(f.key);
+                          }}
+                          error={errors[f.key]?.message}
+                        />
+                      ))}
+                  </Box>
+                </Box>
+              ),
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -271,15 +326,53 @@ function RecordDialog({
         ) : q.isError ? (
           <ErrorState error={q.error} retry={() => void q.refetch()} />
         ) : (
-          <Stack spacing={2}>
-            {contract.columns.map((k) => (
-              <div key={k}>
-                <Typography variant="caption">{label(k)}</Typography>
-                <Typography sx={{ overflowWrap: 'anywhere' }}>
-                  {String(q.data[k] ?? 'Not provided')}
-                </Typography>
-              </div>
-            ))}
+          <Stack spacing={3}>
+            {Array.from(new Set(contract.columns.map(fieldSection))).map(
+              (section) => (
+                <Box key={section}>
+                  <Typography variant="overline" color="text.secondary">
+                    {section}
+                  </Typography>
+                  <Box
+                    component="dl"
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: {
+                        xs: '1fr',
+                        sm: 'repeat(2,minmax(0,1fr))',
+                      },
+                      gap: 2,
+                      m: 0,
+                      mt: 1,
+                    }}
+                  >
+                    {contract.columns
+                      .filter((k) => fieldSection(k) === section)
+                      .map((k) => (
+                        <Box key={k}>
+                          <Typography
+                            component="dt"
+                            variant="caption"
+                            color="text.secondary"
+                          >
+                            {headings[k] ?? label(k)}
+                          </Typography>
+                          <Box
+                            component="dd"
+                            sx={{ m: 0, overflowWrap: 'anywhere' }}
+                          >
+                            {k === 'description' ? (
+                              String(q.data[k] ?? '—')
+                            ) : (
+                              <Value field={k} row={q.data} />
+                            )}
+                          </Box>
+                        </Box>
+                      ))}
+                  </Box>
+                </Box>
+              ),
+            )}
           </Stack>
         )}
       </DialogContent>
@@ -296,6 +389,7 @@ export function WorkflowPage({ module }: { module: string }) {
   const { user } = useAuth();
   const cache = useQueryClient();
   const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(5);
   const [notice, setNotice] = useState('');
@@ -351,12 +445,14 @@ export function WorkflowPage({ module }: { module: string }) {
         description="Your role does not permit access to this page."
       />
     );
-  const rows = (q.data ?? []).filter((r) =>
-    Object.values(r).some((v) =>
-      String(v ?? '')
-        .toLowerCase()
-        .includes(search.trim().toLowerCase()),
-    ),
+  const rows = (q.data ?? []).filter(
+    (r) =>
+      (!status || r.status === status) &&
+      Object.values(r).some((v) =>
+        String(v ?? '')
+          .toLowerCase()
+          .includes(search.trim().toLowerCase()),
+      ),
   );
   const bounded = Math.min(
     page,
@@ -366,82 +462,91 @@ export function WorkflowPage({ module }: { module: string }) {
     <Stack spacing={3}>
       <PageHeader
         title={c.title}
-        description={
-          module === 'invoices'
-            ? 'Invoices are generated when job cards complete.'
-            : module === 'jobs'
-              ? 'The signed-in user is recorded as salesperson. Completion generates the invoice.'
-              : 'Manage records and their supported workflow actions.'
-        }
+
         actions={
           c.createRoles.includes(user.role) ? (
             <Button variant="contained" onClick={() => setCreate(true)}>
-              Add {c.title}
+              Add {singular[module]}
             </Button>
           ) : undefined
         }
       />
       {notice && <Alert onClose={() => setNotice('')}>{notice}</Alert>}
-      <Button onClick={() => void q.refetch()} disabled={q.isFetching}>
-        Refresh {c.title}
-      </Button>
+      {q.data && !q.isError && (
+        <Metrics
+          items={[
+            {
+              label:
+                module === 'jobs'
+                  ? 'Total Jobs'
+                  : `Total ${c.title.toLowerCase()}`,
+              value: q.data.length,
+            },
+            ...(module === 'jobs'
+              ? ['PENDING', 'COMPLETED', 'CANCELED']
+              : module === 'invoices'
+                ? ['DRAFT', 'COMPLETED', 'CANCELED']
+                : module === 'maintenance'
+                  ? ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED']
+                  : []
+            ).map((state) => ({
+              label: label(state.toLowerCase().replaceAll('_', ' ')),
+              value: q.data.filter((r) => r.status === state).length,
+            })),
+          ]}
+        />
+      )}
       {q.isError ? (
         <ErrorState error={q.error} retry={() => void q.refetch()} />
       ) : (
         <DataTableShell
           label={c.title}
           columns={[
-            ...c.columns
-              .filter((k) => !k.endsWith('Id'))
-              .map((k) => ({
-                key: k,
-                label: label(k),
-                render: (r: Row) => String(r[k] ?? '—'),
-              })),
+            ...directories[module].map((k) => ({
+              key: k,
+              label: headings[k] ?? label(k),
+              render: (r: Row) => <Value field={k} row={r} />,
+            })),
             {
               key: 'actions',
               label: 'Actions',
               render: (r: Row) => (
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    onClick={() =>
-                      setSelected({ id: Number(r.id), mode: 'view' })
-                    }
-                  >
-                    Details
-                  </Button>
-                  {c.editRoles.includes(user.role) &&
-                    (!c.editStates ||
-                      c.editStates.includes(String(r.status))) && (
-                      <Button
-                        onClick={() =>
-                          setSelected({ id: Number(r.id), mode: 'edit' })
-                        }
-                      >
-                        Edit
-                      </Button>
-                    )}
-                  {c.actions
-                    .filter(
-                      (a) =>
-                        a.roles.includes(user.role) &&
-                        (!a.states || a.states.includes(String(r.status))) &&
-                        !(module === 'users' && r.role === 'ADMIN'),
-                    )
-                    .map((a) => (
-                      <Button
-                        key={a.label}
-                        onClick={() => {
+                <RowMenu
+                  reference={String(r[directories[module][0]] ?? r.id)}
+                  actions={[
+                    {
+                      label: 'Details',
+                      run: () =>
+                        setSelected({ id: Number(r.id), mode: 'view' }),
+                    },
+                    ...(c.editRoles.includes(user.role) &&
+                    (!c.editStates || c.editStates.includes(String(r.status)))
+                      ? [
+                          {
+                            label: 'Edit',
+                            run: () =>
+                              setSelected({ id: Number(r.id), mode: 'edit' }),
+                          },
+                        ]
+                      : []),
+                    ...c.actions
+                      .filter(
+                        (a) =>
+                          a.roles.includes(user.role) &&
+                          (!a.states || a.states.includes(String(r.status))) &&
+                          !(module === 'users' && r.role === 'ADMIN'),
+                      )
+                      .map((a) => ({
+                        label: a.label,
+                        run: () => {
                           mutation.reset();
                           if (a.fields)
                             setSelected({ id: Number(r.id), mode: a });
                           else setConfirm({ row: r, action: a });
-                        }}
-                      >
-                        {a.label}
-                      </Button>
-                    ))}
-                </Stack>
+                        },
+                      })),
+                  ]}
+                />
               ),
             },
           ]}
@@ -458,14 +563,65 @@ export function WorkflowPage({ module }: { module: string }) {
           }}
           toolbar={
             <TableToolbar title={`${c.title} directory`}>
-              <SearchField
-                value={search}
-                onChange={(v) => {
-                  setSearch(v);
-                  setPage(0);
-                }}
-              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <SearchField
+                  value={search}
+                  onChange={(v) => {
+                    setSearch(v);
+                    setPage(0);
+                  }}
+                />
+                <Button
+                  onClick={() => void q.refetch()}
+                  disabled={q.isFetching}
+                >
+                  Refresh {c.title}
+                </Button>
+              </Stack>
             </TableToolbar>
+          }
+          filters={
+            c.columns.includes('status') ? (
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{ p: 2, flexWrap: 'wrap', gap: 1 }}
+              >
+                {[
+                  '',
+                  ...Array.from(
+                    new Set((q.data ?? []).map((r) => String(r.status))),
+                  ),
+                ].map((state) => (
+                  <Chip
+                    key={state}
+                    label={
+                      state
+                        ? label(state.toLowerCase().replaceAll('_', ' '))
+                        : 'All statuses'
+                    }
+                    variant={status === state ? 'filled' : 'outlined'}
+                    color={status === state ? 'primary' : 'default'}
+                    onClick={() => {
+                      setStatus(state);
+                      setPage(0);
+                    }}
+                  />
+                ))}
+                {(status || search) && (
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setStatus('');
+                      setSearch('');
+                      setPage(0);
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                )}
+              </Stack>
+            ) : undefined
           }
           empty={
             <EmptyState
@@ -477,7 +633,7 @@ export function WorkflowPage({ module }: { module: string }) {
       )}
       {create && (
         <RecordForm
-          title={`Add ${c.title}`}
+          title={`Add ${singular[module]}`}
           fields={c.createFields}
           close={() => setCreate(false)}
           submit={async (body) => {
@@ -500,7 +656,9 @@ export function WorkflowPage({ module }: { module: string }) {
         description={
           module === 'jobs' && confirm?.action.label === 'Complete'
             ? 'Completion requires timesheets and generates an invoice. Review the recorded hours first.'
-            : 'This changes the record on the server. Existing validation and lifecycle restrictions apply.'
+            : confirm?.action.label === 'Deactivate'
+              ? 'This record will no longer be available for new assignments. Existing records are retained.'
+              : `Review this ${singular[module].toLowerCase()} before confirming ${confirm?.action.label.toLowerCase() ?? 'the change'}. This changes its workflow state.`
         }
         pending={mutation.isPending}
         onClose={() => setConfirm(null)}
