@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Stack } from '@mui/material';
+import { Button, Stack, Tabs, Tab, Box } from '@mui/material';
 import { WorkflowPage, RecordForm } from './WorkflowPage';
 import { api } from '../../shared/api';
 export function UsersPage() {
@@ -7,12 +7,35 @@ export function UsersPage() {
   const [password, setPassword] = useState(false);
   return (
     <Stack spacing={3}>
-      <Stack direction="row" spacing={2}>
-        <Button onClick={() => setModule('users')}>Users</Button>
-        <Button onClick={() => setModule('operators')}>Operators</Button>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        <Tabs
+          value={module}
+          onChange={(_, value) => setModule(value)}
+          aria-label="Administration"
+          sx={{ flex: 1 }}
+        >
+          <Tab
+            value="users"
+            label="Users"
+            id="users-tab"
+            aria-controls="administration-panel"
+          />
+          <Tab
+            value="operators"
+            label="Operators"
+            id="operators-tab"
+            aria-controls="administration-panel"
+          />
+        </Tabs>
         <Button onClick={() => setPassword(true)}>Change my password</Button>
       </Stack>
-      <WorkflowPage key={module} module={module} />
+      <Box
+        role="tabpanel"
+        id="administration-panel"
+        aria-labelledby={`${module}-tab`}
+      >
+        <WorkflowPage key={module} module={module} />
+      </Box>
       {password && (
         <RecordForm
           title="Change my password"
