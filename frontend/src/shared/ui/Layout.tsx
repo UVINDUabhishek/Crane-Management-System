@@ -8,7 +8,7 @@ export function PageHeader({
   breadcrumbs,
 }: {
   title: string;
-  description: string;
+  description?: string;
   eyebrow?: string;
   actions?: ReactNode;
   breadcrumbs?: ReactNode;
@@ -27,16 +27,22 @@ export function PageHeader({
               {eyebrow}
             </Typography>
           )}
-          <Typography variant="h4" component="h1" sx={{ mt: 0.5 }}>
+          <Typography
+            variant="h5"
+            component="h1"
+            sx={{ fontSize: { xs: '1.35rem', md: '1.55rem' } }}
+          >
             {title}
           </Typography>
-          <Typography
-            color="text.secondary"
-            variant="body2"
-            sx={{ mt: 1, maxWidth: 680 }}
-          >
-            {description}
-          </Typography>
+          {description && (
+            <Typography
+              color="text.secondary"
+              variant="body2"
+              sx={{ mt: 1, maxWidth: 680 }}
+            >
+              {description}
+            </Typography>
+          )}
         </Box>
         {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
       </Stack>
