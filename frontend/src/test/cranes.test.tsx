@@ -465,3 +465,18 @@ it.each([
     craneSchema.safeParse({ ...formDefaults(crane), ...invalid }).success,
   ).toBe(false);
 });
+
+it('keeps specifications in details while removing directory columns and numeric ID', async () => {
+  const user = await mount();
+  await screen.findByText('CR080T001');
+  for (const name of ['Capacity', 'Manufacturer', 'Year'])
+    expect(
+      screen.queryByRole('columnheader', { name }),
+    ).not.toBeInTheDocument();
+  const dialog = await action(user, 'View details');
+  await within(dialog).findByText('Liebherr');
+  for (const name of ['Capacity', 'Manufacturer', 'Year'])
+    expect(within(dialog).getByText(name)).toBeVisible();
+  expect(within(dialog).queryByText('ID')).not.toBeInTheDocument();
+  expect(within(dialog).queryByText('42')).not.toBeInTheDocument();
+});

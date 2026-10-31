@@ -710,7 +710,7 @@ export const contracts: Record<string, Contract> = {
     editFields: [],
     actions: [
       {
-        label: 'Deactivate',
+        label: 'Delete',
         path: '',
         roles: ['ADMIN'],
         method: 'delete',

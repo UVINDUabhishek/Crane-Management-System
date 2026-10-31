@@ -121,29 +121,21 @@ export function CranesPage() {
         />
       ),
     },
-    ...(
-      [
-        'craneNumber',
-        'type',
-        'capacity',
-        'manufacturer',
-        'serialNumber',
-        'year',
-        'location',
-      ] as const
-    ).map((key) => ({
-      key,
-      label: {
-        craneNumber: 'Crane number',
-        type: 'Type',
-        capacity: 'Capacity',
-        manufacturer: 'Manufacturer',
-        serialNumber: 'Serial number',
-        year: 'Year',
-        location: 'Location',
-      }[key],
-      render: (c: CraneResponse) => c[key] ?? '—',
-    })),
+    ...(['craneNumber', 'type', 'serialNumber', 'location'] as const).map(
+      (key) => ({
+        key,
+        label: {
+          craneNumber: 'Crane number',
+          type: 'Type',
+          capacity: 'Capacity',
+          manufacturer: 'Manufacturer',
+          serialNumber: 'Serial number',
+          year: 'Year',
+          location: 'Location',
+        }[key],
+        render: (c: CraneResponse) => c[key] ?? '—',
+      }),
+    ),
     {
       key: 'status',
       label: 'Operational status',
@@ -171,9 +163,7 @@ export function CranesPage() {
   return (
     <Stack spacing={3}>
       <PageHeader
-        eyebrow="FLEET"
         title="Cranes"
-        description="Fleet specifications, activation and operational status."
         actions={
           write ? (
             <Button
@@ -189,14 +179,6 @@ export function CranesPage() {
           ) : undefined
         }
       />
-      <Button
-        ref={fallback}
-        sx={{ alignSelf: 'flex-start' }}
-        onClick={() => void query.refetch()}
-        disabled={query.isFetching}
-      >
-        Refresh cranes
-      </Button>
       {query.isError ? (
         <ErrorState error={query.error} retry={() => void query.refetch()} />
       ) : (
@@ -225,14 +207,23 @@ export function CranesPage() {
                   : 'Loading directory'
               }
             >
-              <SearchField
-                label="Search cranes"
-                value={search}
-                onChange={(v) => {
-                  setSearch(v);
-                  setPage(0);
-                }}
-              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <SearchField
+                  label="Search cranes"
+                  value={search}
+                  onChange={(v) => {
+                    setSearch(v);
+                    setPage(0);
+                  }}
+                />
+                <Button
+                  ref={fallback}
+                  onClick={() => void query.refetch()}
+                  disabled={query.isFetching}
+                >
+                  Refresh cranes
+                </Button>
+              </Stack>
             </TableToolbar>
           }
           filters={

@@ -129,25 +129,18 @@ export function CustomersPage() {
         />
       ),
     },
-    ...(
-      [
-        'companyName',
-        'registrationNo',
-        'vatNo',
-        'contactPerson',
-        'contactNo',
-      ] as const
-    ).map((key, index) => ({
-      key,
-      label: [
-        'Company name',
-        'Registration number',
-        'VAT number',
-        'Contact person',
-        'Contact number',
-      ][index],
-      render: (c: CustomerResponse) => c[key] || '—',
-    })),
+    ...(['companyName', 'vatNo', 'contactPerson', 'contactNo'] as const).map(
+      (key, index) => ({
+        key,
+        label: [
+          'Company name',
+          'VAT number',
+          'Contact person',
+          'Contact number',
+        ][index],
+        render: (c: CustomerResponse) => c[key] || '—',
+      }),
+    ),
     {
       key: 'actions',
       label: 'Actions',
@@ -170,9 +163,7 @@ export function CustomersPage() {
   return (
     <Stack spacing={3}>
       <PageHeader
-        eyebrow="RELATIONSHIPS"
         title="Customers"
-        description="Company details, billing addresses and contacts in one place."
         actions={
           write ? (
             <Button
@@ -188,14 +179,6 @@ export function CustomersPage() {
           ) : undefined
         }
       />
-      <Button
-        ref={fallback}
-        sx={{ alignSelf: 'flex-start' }}
-        onClick={() => void query.refetch()}
-        disabled={query.isFetching}
-      >
-        Refresh customers
-      </Button>
       {query.isError ? (
         <ErrorState error={query.error} retry={() => void query.refetch()} />
       ) : (
@@ -224,14 +207,23 @@ export function CustomersPage() {
                   : 'Loading directory'
               }
             >
-              <SearchField
-                label="Search customers"
-                value={search}
-                onChange={(v) => {
-                  setSearch(v);
-                  setPage(0);
-                }}
-              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <SearchField
+                  label="Search customers"
+                  value={search}
+                  onChange={(v) => {
+                    setSearch(v);
+                    setPage(0);
+                  }}
+                />
+                <Button
+                  ref={fallback}
+                  onClick={() => void query.refetch()}
+                  disabled={query.isFetching}
+                >
+                  Refresh customers
+                </Button>
+              </Stack>
             </TableToolbar>
           }
           filters={

@@ -633,3 +633,17 @@ it('refreshes persisted activation, supports reactivation and filters actual sta
     screen.getByRole('switch', { name: 'Activation for Atlas Lifting' }),
   ).toBeChecked();
 });
+
+it('keeps registration in details but removes it from the directory', async () => {
+  const user = await mount();
+  await screen.findByText('Atlas Lifting');
+  expect(
+    screen.queryByRole('columnheader', { name: 'Registration number' }),
+  ).not.toBeInTheDocument();
+  await user.click(
+    screen.getByRole('button', { name: 'Actions for Atlas Lifting' }),
+  );
+  await user.click(screen.getByRole('menuitem', { name: 'View details' }));
+  const dialog = await screen.findByRole('dialog');
+  expect(await within(dialog).findByText('REG-42')).toBeVisible();
+});

@@ -51,23 +51,27 @@ export function FilterToolbar({
 }) {
   return (
     <Stack
-      direction={{ xs: 'column', sm: 'row' }}
+      direction="row"
       spacing={1.5}
       sx={{
         p: 2.5,
-        alignItems: { sm: 'center' },
+        alignItems: 'flex-start',
         bgcolor: 'surface.muted',
-        flexWrap: 'wrap',
       }}
     >
-      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flex: 1 }}>
+      <Box
+        sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flex: 1, minWidth: 0 }}
+      >
         {children}
       </Box>
-      {onClear && (
-        <Button size="small" onClick={onClear}>
-          Clear filters
-        </Button>
-      )}
+      <Button
+        size="small"
+        onClick={onClear}
+        disabled={!onClear}
+        sx={{ flexShrink: 0 }}
+      >
+        Clear filters
+      </Button>
       {onMore && (
         <Button
           variant="outlined"

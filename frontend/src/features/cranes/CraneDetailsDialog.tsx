@@ -40,7 +40,6 @@ export function CraneDetailsDialog({
       <CraneFormDialog crane={query.data} onClose={onClose} onSaved={onSaved} />
     );
   const labels = {
-    id: 'ID',
     craneNumber: 'Crane number',
     ...craneFields,
     status: 'Operational status',

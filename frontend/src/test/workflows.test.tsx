@@ -237,6 +237,7 @@ it('filters and resets the job directory while summaries retain server totals', 
   const user = await mount('jobs');
   expect(await screen.findByText('JC-1')).toBeVisible();
   expect(screen.getByText('Total Jobs')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Clear filters' })).toBeDisabled();
   expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   expect(
     screen.queryByRole('columnheader', { name: 'Id' }),
@@ -245,6 +246,7 @@ it('filters and resets the job directory while summaries retain server totals', 
   expect(screen.queryByText('JC-1')).not.toBeInTheDocument();
   expect(screen.getByText('JC-2')).toBeVisible();
   await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+  expect(screen.getByRole('button', { name: 'Clear filters' })).toBeDisabled();
   fireEvent.change(screen.getByRole('textbox', { name: 'Search records' }), {
     target: { value: 'Harbor' },
   });
@@ -363,4 +365,223 @@ it('locks job completion while the request is pending and refreshes after succes
   expect(
     within(screen.getByRole('table')).getByText('Completed'),
   ).toBeVisible();
+});
+
+it.each(['jobs', 'timesheets', 'maintenance', 'quotations', 'users'])(
+  'hides internal IDs but retains readable %s detail references',
+  async (module) => {
+    const c = contracts[module];
+    const row = {
+      id: 99101,
+      customerId: 99102,
+      jobCardId: 99103,
+      craneId: 99104,
+      quotationId: 99105,
+      operatorId: 99106,
+      salesPersonId: 99107,
+      maintenancePersonId: 99108,
+      jobCardNumber: 'JC-readable',
+      customer: 'Atlas',
+      customerName: 'Atlas',
+      crane: 'CR-readable',
+      operator: 'Operator readable',
+      maintenancePerson: 'Assignee readable',
+      quotation: 'QT-readable',
+      username: 'User readable',
+      description: 'Full description\nSecond line',
+      status: 'PENDING',
+    };
+    server.use(
+      http.get('/api' + c.path, () => HttpResponse.json([row])),
+      http.get('/api' + c.path + '/99101', () => HttpResponse.json(row)),
+    );
+    const user = await mount(module);
+    if (module === 'jobs')
+      expect(
+        screen.queryByRole('columnheader', { name: 'Operator' }),
+      ).not.toBeInTheDocument();
+    if (module === 'quotations')
+      expect(
+        screen.getByRole('columnheader', { name: 'Valid Period' }),
+      ).toBeVisible();
+    await user.click(
+      await screen.findByRole('button', { name: /Actions for/ }),
+    );
+    await user.click(screen.getByRole('menuitem', { name: 'Details' }));
+    const dialog = await screen.findByRole('dialog');
+    await within(dialog).findByText(
+      module === 'users' ? 'User readable' : /Full description/,
+    );
+    for (const value of Object.values(row).filter((v) => typeof v === 'number'))
+      expect(within(dialog).queryByText(String(value))).not.toBeInTheDocument();
+    for (const key of c.columns.filter((k) => k === 'id' || k.endsWith('Id')))
+      expect(
+        within(dialog).queryByText(
+          key.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()),
+        ),
+      ).not.toBeInTheDocument();
+    if (module === 'jobs')
+      expect(within(dialog).getByText('Operator readable')).toBeVisible();
+    if (module === 'timesheets')
+      expect(within(dialog).getByText('JC-readable')).toBeVisible();
+    if (module === 'maintenance')
+      expect(within(dialog).getByText('Assignee readable')).toBeVisible();
+    if (module === 'users') expect(dialog).toHaveAccessibleName('User details');
+  },
+);
+
+it.each([
+  [1, 'Original'],
+  [2, 'Revision 1'],
+  [3, 'Revision 2'],
+] as const)(
+  'renders invoice version %s as %s separately from status',
+  async (version, versionLabel) => {
+    const row = {
+      id: 99101,
+      customerId: 99102,
+      craneId: 99103,
+      jobCardId: 99104,
+      quotationId: 99105,
+      invoiceNumber: 'INV-readable',
+      invoiceDate: '2026-10-31',
+      status: 'COMPLETED',
+      version,
+      customer: 'Atlas',
+      crane: 'CR-readable',
+      jobCard: 'JC-readable',
+      quotation: 'QT-readable',
+      qty: 8,
+      rate: 1000,
+      mobilization: 500,
+      amount: 8500,
+      description: 'Lift installation',
+    };
+    server.use(
+      http.get('/api/invoices', () => HttpResponse.json([row])),
+      http.get('/api/invoices/99101', () => HttpResponse.json(row)),
+    );
+    const user = await mount('invoices');
+    expect(await screen.findByText(versionLabel)).toBeVisible();
+    await user.click(
+      screen.getByRole('button', { name: 'Actions for INV-readable' }),
+    );
+    await user.click(screen.getByRole('menuitem', { name: 'Details' }));
+    const dialog = await screen.findByRole('dialog');
+    await within(dialog).findByText('INV-readable');
+    for (const value of [
+      'Atlas',
+      'CR-readable',
+      'JC-readable',
+      'QT-readable',
+      versionLabel,
+      'Completed',
+      '31 Oct 2026',
+      '8',
+      '1,000.00',
+      '500.00',
+      '8,500.00',
+      'Lift installation',
+    ])
+      expect(within(dialog).getByText(value)).toBeVisible();
+    for (const id of [99101, 99102, 99103, 99104, 99105])
+      expect(within(dialog).queryByText(String(id))).not.toBeInTheDocument();
+    expect(within(dialog).getByText('Includes mobilization')).toBeVisible();
+    expect(within(dialog).queryByRole('textbox')).not.toBeInTheDocument();
+  },
+);
+
+it('confirms permanent operator deletion safely and retains referenced operators on conflict', async () => {
+  const remove = vi.fn();
+  server.use(
+    http.get('/api/admin/users', () => HttpResponse.json([])),
+    http.get('/api/admin/operators', () =>
+      HttpResponse.json([{ id: 7, operatorName: 'Morgan' }]),
+    ),
+    http.delete('/api/admin/operators/7', () => {
+      remove();
+      return HttpResponse.json(
+        { detail: 'Operator is referenced by a job card.' },
+        { status: 409 },
+      );
+    }),
+  );
+  const user = await mount('users');
+  await user.click(screen.getByRole('tab', { name: 'Operators' }));
+  await user.click(
+    await screen.findByRole('button', { name: 'Actions for Morgan' }),
+  );
+  expect(
+    screen.queryByRole('menuitem', { name: 'Deactivate' }),
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+  let dialog = screen.getByRole('dialog', { name: 'Delete Morgan?' });
+  expect(within(dialog).getByText(/cannot be undone/)).toBeVisible();
+  await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+  expect(remove).not.toHaveBeenCalled();
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
+  await user.click(screen.getByRole('button', { name: 'Actions for Morgan' }));
+  await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+  dialog = screen.getByRole('dialog');
+  await user.click(within(dialog).getByRole('button', { name: 'Confirm' }));
+  expect(
+    await within(dialog).findByText('Operator is referenced by a job card.'),
+  ).toBeVisible();
+  expect(remove).toHaveBeenCalledTimes(1);
+  expect(
+    within(screen.getByRole('table', { hidden: true })).getByText('Morgan'),
+  ).toBeInTheDocument();
+});
+
+it('retains quotation soft-deactivation wording', async () => {
+  server.use(
+    http.get('/api/quotations', () =>
+      HttpResponse.json([{ id: 1, quotationNumber: 'QT-1' }]),
+    ),
+  );
+  const user = await mount('quotations');
+  await user.click(
+    await screen.findByRole('button', { name: 'Actions for QT-1' }),
+  );
+  expect(screen.getByRole('menuitem', { name: 'Deactivate' })).toBeVisible();
+  expect(
+    screen.queryByRole('menuitem', { name: 'Delete' }),
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByRole('menuitem', { name: 'Deactivate' }));
+  expect(
+    within(screen.getByRole('dialog')).getByText(
+      /Existing records are retained/,
+    ),
+  ).toBeVisible();
+});
+
+it('removes a successfully deleted operator from the refreshed directory', async () => {
+  let rows = [{ id: 7, operatorName: 'Morgan' }];
+  const deleted = vi.fn();
+  server.use(
+    http.get('/api/admin/users', () => HttpResponse.json([])),
+    http.get('/api/admin/operators', () => HttpResponse.json(rows)),
+    http.delete('/api/admin/operators/7', () => {
+      deleted();
+      rows = [];
+      return new HttpResponse(null, { status: 204 });
+    }),
+  );
+  const user = await mount('users');
+  await user.click(screen.getByRole('tab', { name: 'Operators' }));
+  await user.click(
+    await screen.findByRole('button', { name: 'Actions for Morgan' }),
+  );
+  await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+  await user.click(
+    within(screen.getByRole('dialog')).getByRole('button', { name: 'Confirm' }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
+  expect(deleted).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText('Morgan')).not.toBeInTheDocument();
+  expect(screen.getByText('No matching records')).toBeVisible();
 });

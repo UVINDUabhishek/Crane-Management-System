@@ -28,7 +28,12 @@ import { api, normalizeError } from '../../shared/api';
 import { useAuth } from '../auth/AuthProvider';
 import { PageHeader } from '../../shared/ui/Layout';
 import { DataTableShell, ConfirmDialog } from '../../shared/ui/DataTableShell';
-import { SearchField, TableToolbar } from '../../shared/ui/Filters';
+import { InvoiceDetails } from './InvoiceDetails';
+import {
+  FilterToolbar,
+  SearchField,
+  TableToolbar,
+} from '../../shared/ui/Filters';
 import { EmptyState, ErrorState, LoadingState } from '../../shared/States';
 import { contracts, type Field, type Action, type Contract } from './contracts';
 export type Row = Record<string, string | number | boolean | null>;
@@ -317,24 +322,29 @@ function RecordDialog({
         }}
       />
     );
+  const detailColumns = contract.columns.filter(
+    (k) => k !== 'id' && !k.endsWith('Id'),
+  );
   return (
     <Dialog open fullWidth onClose={close} aria-labelledby="detail-title">
-      <DialogTitle id="detail-title">{contract.title} details</DialogTitle>
+      <DialogTitle id="detail-title">
+        {contract.path === '/admin/users'
+          ? 'User'
+          : contract.path === '/invoices'
+            ? 'Invoice'
+            : contract.title}{' '}
+        details
+      </DialogTitle>
       <DialogContent>
-        {contract.path === '/invoices' && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            The invoice total includes mobilization. Invoices are generated on
-            job completion; completed invoices can be revised using the revision
-            action.
-          </Alert>
-        )}
         {q.isPending ? (
           <LoadingState />
         ) : q.isError ? (
           <ErrorState error={q.error} retry={() => void q.refetch()} />
+        ) : contract.path === '/invoices' ? (
+          <InvoiceDetails invoice={q.data} />
         ) : (
           <Stack spacing={3}>
-            {Array.from(new Set(contract.columns.map(fieldSection))).map(
+            {Array.from(new Set(detailColumns.map(fieldSection))).map(
               (section) => (
                 <Box key={section}>
                   <Typography variant="overline" color="text.secondary">
@@ -353,10 +363,17 @@ function RecordDialog({
                       mt: 1,
                     }}
                   >
-                    {contract.columns
+                    {detailColumns
                       .filter((k) => fieldSection(k) === section)
                       .map((k) => (
-                        <Box key={k}>
+                        <Box
+                          key={k}
+                          sx={
+                            k === 'description'
+                              ? { gridColumn: '1 / -1', whiteSpace: 'pre-wrap' }
+                              : undefined
+                          }
+                        >
                           <Typography
                             component="dt"
                             variant="caption"
@@ -589,10 +606,16 @@ export function WorkflowPage({ module }: { module: string }) {
           }
           filters={
             c.columns.includes('status') ? (
-              <Stack
-                direction="row"
-                spacing={1}
-                sx={{ p: 2, flexWrap: 'wrap', gap: 1 }}
+              <FilterToolbar
+                onClear={
+                  status || search
+                    ? () => {
+                        setStatus('');
+                        setSearch('');
+                        setPage(0);
+                      }
+                    : undefined
+                }
               >
                 {[
                   '',
@@ -615,19 +638,7 @@ export function WorkflowPage({ module }: { module: string }) {
                     }}
                   />
                 ))}
-                {(status || search) && (
-                  <Button
-                    size="small"
-                    onClick={() => {
-                      setStatus('');
-                      setSearch('');
-                      setPage(0);
-                    }}
-                  >
-                    Clear filters
-                  </Button>
-                )}
-              </Stack>
+              </FilterToolbar>
             ) : undefined
           }
           empty={
@@ -659,13 +670,19 @@ export function WorkflowPage({ module }: { module: string }) {
       )}
       <ConfirmDialog
         open={!!confirm}
-        title={`${confirm?.action.label ?? ''} record?`}
+        title={
+          module === 'operators'
+            ? `Delete ${confirm?.row.operatorName ?? 'operator'}?`
+            : `${confirm?.action.label ?? ''} record?`
+        }
         description={
-          module === 'jobs' && confirm?.action.label === 'Complete'
-            ? 'Completion requires timesheets and generates an invoice. Review the recorded hours first.'
-            : confirm?.action.label === 'Deactivate'
-              ? 'This record will no longer be available for new assignments. Existing records are retained.'
-              : `Review this ${singular[module].toLowerCase()} before confirming ${confirm?.action.label.toLowerCase() ?? 'the change'}. This changes its workflow state.`
+          module === 'operators'
+            ? 'Permanently delete this operator? This cannot be undone. If the operator is referenced by existing records, deletion may be blocked and the record will be retained.'
+            : module === 'jobs' && confirm?.action.label === 'Complete'
+              ? 'Completion requires timesheets and generates an invoice. Review the recorded hours first.'
+              : confirm?.action.label === 'Deactivate'
+                ? 'This record will no longer be available for new assignments. Existing records are retained.'
+                : `Review this ${singular[module].toLowerCase()} before confirming ${confirm?.action.label.toLowerCase() ?? 'the change'}. This changes its workflow state.`
         }
         pending={mutation.isPending}
         onClose={() => setConfirm(null)}

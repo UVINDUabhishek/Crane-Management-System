@@ -24,15 +24,7 @@ export const singular: Record<string, string> = {
   operators: 'Operator',
 };
 export const directories: Record<string, string[]> = {
-  jobs: [
-    'jobCardNumber',
-    'customer',
-    'crane',
-    'operator',
-    'schedule',
-    'hours',
-    'status',
-  ],
+  jobs: ['jobCardNumber', 'customer', 'crane', 'schedule', 'hours', 'status'],
   quotations: [
     'quotationNumber',
     'customerName',
@@ -71,7 +63,7 @@ export const directories: Record<string, string[]> = {
 export const headings: Record<string, string> = {
   schedule: 'Scheduled dates',
   hours: 'Hours',
-  validity: 'Valid dates',
+  validity: 'Valid Period',
   maintenanceSchedule: 'Scheduled dates',
   amount: 'Total',
   minRate: 'Minimum rate',
@@ -96,6 +88,13 @@ const statuses = new Set([
 ]);
 export const formatValue = (key: string, value: Row[string]): string => {
   if (value === null || value === undefined || value === '') return '—';
+  if (
+    key === 'version' &&
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= 1
+  )
+    return value === 1 ? 'Original' : `Revision ${value - 1}`;
   if (typeof value === 'number')
     return new Intl.NumberFormat('en', {
       maximumFractionDigits: 2,

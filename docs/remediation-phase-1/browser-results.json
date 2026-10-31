@@ -1,0 +1,123 @@
+{
+  "mode": "Synthetic API fixtures; browser presentation verification only",
+  "results": [
+    {
+      "module": "Cranes",
+      "width": 1440,
+      "theme": "light",
+      "tableShift": 0
+    },
+    {
+      "module": "Customers",
+      "width": 1440,
+      "theme": "light",
+      "tableShift": 0
+    },
+    {
+      "module": "Job cards",
+      "width": 1440,
+      "theme": "light",
+      "tableShift": 0
+    },
+    {
+      "module": "Cranes",
+      "width": 1440,
+      "theme": "dark",
+      "tableShift": 0
+    },
+    {
+      "module": "Customers",
+      "width": 1440,
+      "theme": "dark",
+      "tableShift": 0
+    },
+    {
+      "module": "Job cards",
+      "width": 1440,
+      "theme": "dark",
+      "tableShift": 0
+    },
+    {
+      "module": "Cranes",
+      "width": 768,
+      "theme": "light",
+      "tableShift": 0
+    },
+    {
+      "module": "Customers",
+      "width": 768,
+      "theme": "light",
+      "tableShift": 0
+    },
+    {
+      "module": "Job cards",
+      "width": 768,
+      "theme": "light",
+      "tableShift": 0
+    },
+    {
+      "module": "Cranes",
+      "width": 768,
+      "theme": "dark",
+      "tableShift": 0
+    },
+    {
+      "module": "Customers",
+      "width": 768,
+      "theme": "dark",
+      "tableShift": 0
+    },
+    {
+      "module": "Job cards",
+      "width": 768,
+      "theme": "dark",
+      "tableShift": 0
+    },
+    {
+      "module": "Cranes",
+      "width": 390,
+      "theme": "light",
+      "tableShift": 0
+    },
+    {
+      "module": "Customers",
+      "width": 390,
+      "theme": "light",
+      "tableShift": 0
+    },
+    {
+      "module": "Job cards",
+      "width": 390,
+      "theme": "light",
+      "tableShift": 0
+    },
+    {
+      "module": "Cranes",
+      "width": 390,
+      "theme": "dark",
+      "tableShift": 0
+    },
+    {
+      "module": "Customers",
+      "width": 390,
+      "theme": "dark",
+      "tableShift": 0
+    },
+    {
+      "module": "Job cards",
+      "width": 390,
+      "theme": "dark",
+      "tableShift": 0
+    }
+  ],
+  "invoiceWidths": [
+    1440,
+    768,
+    390
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "pageErrors": []
+}
