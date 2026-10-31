@@ -91,7 +91,8 @@ it.each([
     ),
   );
   const user = await mount(module);
-  await user.click(await screen.findByRole('button', { name: 'Details' }));
+  await user.click(await screen.findByRole('button', { name: /Actions for/ }));
+  await user.click(screen.getByRole('menuitem', { name: 'Details' }));
   expect(await screen.findByRole('dialog')).toBeVisible();
   await user.click(screen.getByRole('button', { name: 'Close' }));
 });
@@ -124,14 +125,19 @@ it('completes a job only through the dedicated endpoint and refreshes', async ()
     }),
   );
   const user = await mount('jobs');
-  await user.click(await screen.findByRole('button', { name: 'Complete' }));
+  await user.click(await screen.findByRole('button', { name: /Actions for/ }));
+  await user.click(screen.getByRole('menuitem', { name: 'Complete' }));
   await user.click(
     within(screen.getByRole('dialog')).getByRole('button', { name: 'Confirm' }),
   );
-  await screen.findByText('COMPLETED');
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
+  await within(screen.getByRole('table')).findByText('Completed');
+  await user.click(screen.getByRole('button', { name: /Actions for/ }));
   expect(done).toHaveBeenCalledTimes(1);
   expect(
-    screen.queryByRole('button', { name: 'Complete' }),
+    screen.queryByRole('menuitem', { name: 'Complete' }),
   ).not.toBeInTheDocument();
 });
 it('retains lifecycle error and record on server conflict', async () => {
@@ -144,10 +150,13 @@ it('retains lifecycle error and record on server conflict', async () => {
     ),
   );
   const user = await mount('invoices');
-  await user.click(await screen.findByRole('button', { name: 'Complete' }));
+  await user.click(await screen.findByRole('button', { name: /Actions for/ }));
+  await user.click(screen.getByRole('menuitem', { name: 'Complete' }));
   await user.click(screen.getByRole('button', { name: 'Confirm' }));
   expect(await screen.findByText('Conflict from server')).toBeVisible();
-  expect(screen.getByText('DRAFT')).toBeInTheDocument();
+  expect(
+    within(screen.getByRole('table', { hidden: true })).getByText('Draft'),
+  ).toBeInTheDocument();
 });
 it('validates and submits user fields without server controlled attributes', async () => {
   const post = vi.fn();
@@ -159,7 +168,7 @@ it('validates and submits user fields without server controlled attributes', asy
     }),
   );
   const user = await mount('users');
-  await user.click(await screen.findByRole('button', { name: 'Add Users' }));
+  await user.click(await screen.findByRole('button', { name: 'Add User' }));
   await user.click(screen.getByRole('button', { name: 'Save' }));
   expect(await screen.findAllByText('This field is required.')).toHaveLength(4);
   expect(post).not.toHaveBeenCalled();
@@ -199,9 +208,159 @@ it('renders server revenue and restricts report options', async () => {
   const user = await mount('reports', 'OPERATIONS');
   await user.click(screen.getByRole('combobox', { name: 'Report' }));
   expect(
-    screen.queryByRole('option', { name: 'revenue monthly' }),
+    screen.queryByRole('option', { name: 'Revenue · monthly' }),
   ).not.toBeInTheDocument();
-  await user.click(screen.getByRole('option', { name: 'revenue summary' }));
+  await user.click(screen.getByRole('option', { name: 'Revenue summary' }));
   await user.click(screen.getByRole('button', { name: 'Run report' }));
-  expect(await screen.findAllByText('8500')).toHaveLength(2);
+  expect(await screen.findAllByText('8,500.00')).toHaveLength(4);
+});
+
+it('filters and resets the job directory while summaries retain server totals', async () => {
+  server.use(
+    http.get('/api/job-card', () =>
+      HttpResponse.json([
+        {
+          id: 1,
+          jobCardNumber: 'JC-1',
+          customer: 'Harbor works',
+          status: 'PENDING',
+        },
+        {
+          id: 2,
+          jobCardNumber: 'JC-2',
+          customer: 'Tower works',
+          status: 'COMPLETED',
+        },
+      ]),
+    ),
+  );
+  const user = await mount('jobs');
+  expect(await screen.findByText('JC-1')).toBeVisible();
+  expect(screen.getByText('Total Jobs')).toBeVisible();
+  expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+  expect(
+    screen.queryByRole('columnheader', { name: 'Id' }),
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Completed' }));
+  expect(screen.queryByText('JC-1')).not.toBeInTheDocument();
+  expect(screen.getByText('JC-2')).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'Search records' }), {
+    target: { value: 'Harbor' },
+  });
+  expect(screen.getByText('JC-1')).toBeVisible();
+  expect(screen.queryByText('JC-2')).not.toBeInTheDocument();
+});
+
+it('restricts sales job menus and preserves safe cancellation', async () => {
+  const cancel = vi.fn();
+  server.use(
+    http.get('/api/job-card', () =>
+      HttpResponse.json([{ id: 1, jobCardNumber: 'JC-1', status: 'PENDING' }]),
+    ),
+    http.patch('/api/job-card/1/cancel', () => {
+      cancel();
+      return HttpResponse.json({});
+    }),
+  );
+  const user = await mount('jobs', 'SALES');
+  await user.click(
+    await screen.findByRole('button', { name: 'Actions for JC-1' }),
+  );
+  expect(
+    screen.queryByRole('menuitem', { name: 'Complete' }),
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByRole('menuitem', { name: 'Cancel' }));
+  await user.click(
+    within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }),
+  );
+  expect(cancel).not.toHaveBeenCalled();
+  expect(screen.getByText('JC-1')).toBeVisible();
+});
+
+it('uses named report lookups and sends the selected stable ID', async () => {
+  const read = vi.fn();
+  server.use(
+    http.get('/api/lookups/customers', () =>
+      HttpResponse.json([{ id: 42, label: 'Harbor works' }]),
+    ),
+    http.get('/api/reports/job-cards/customer/42', () => {
+      read();
+      return HttpResponse.json([]);
+    }),
+  );
+  const user = await mount('reports', 'OPERATIONS');
+  await user.click(screen.getByRole('combobox', { name: 'Report' }));
+  await user.click(
+    screen.getByRole('option', { name: 'Job cards · customer' }),
+  );
+  await user.click(screen.getByRole('combobox', { name: 'Customer' }));
+  await user.click(
+    await screen.findByRole('option', { name: 'Harbor works (#42)' }),
+  );
+  await user.click(screen.getByRole('button', { name: 'Run report' }));
+  await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
+});
+
+it('switches administration tabs without sharing directory state', async () => {
+  server.use(
+    http.get('/api/admin/users', () => HttpResponse.json([])),
+    http.get('/api/admin/operators', () =>
+      HttpResponse.json([{ id: 9, operatorName: 'Morgan' }]),
+    ),
+  );
+  const user = await mount('users');
+  await user.click(screen.getByRole('tab', { name: 'Operators' }));
+  expect(await screen.findByText('Morgan')).toBeVisible();
+  expect(screen.getByRole('tab', { name: 'Operators' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  expect(screen.getByRole('button', { name: 'Add Operator' })).toBeVisible();
+});
+
+it('locks job completion while the request is pending and refreshes after success', async () => {
+  const { createRequestGate } = await import('./requestGate');
+  const gate = createRequestGate();
+  let status = 'PENDING';
+  const done = vi.fn();
+  server.use(
+    http.get('/api/job-card', () =>
+      HttpResponse.json([{ id: 1, jobCardNumber: 'JC-1', status }]),
+    ),
+    http.patch('/api/job-card/1/complete', async () => {
+      done();
+      await gate.wait();
+      status = 'COMPLETED';
+      return HttpResponse.json({ id: 1, status });
+    }),
+  );
+  const user = await mount('jobs');
+  await user.click(
+    await screen.findByRole('button', { name: 'Actions for JC-1' }),
+  );
+  await user.click(screen.getByRole('menuitem', { name: 'Complete' }));
+  const dialog = screen.getByRole('dialog');
+  expect(within(dialog).getByText(/generates an invoice/)).toBeVisible();
+  await user.click(within(dialog).getByRole('button', { name: 'Confirm' }));
+  try {
+    await gate.started;
+    expect(
+      within(dialog).getByRole('button', { name: 'Working…' }),
+    ).toBeDisabled();
+    expect(
+      within(dialog).getByRole('button', { name: 'Cancel' }),
+    ).toBeDisabled();
+    await user.keyboard('{Escape}');
+    expect(dialog).toBeVisible();
+    expect(done).toHaveBeenCalledTimes(1);
+  } finally {
+    gate.release();
+  }
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
+  expect(
+    within(screen.getByRole('table')).getByText('Completed'),
+  ).toBeVisible();
 });

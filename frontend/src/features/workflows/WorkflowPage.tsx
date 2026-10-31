@@ -321,6 +321,13 @@ function RecordDialog({
     <Dialog open fullWidth onClose={close} aria-labelledby="detail-title">
       <DialogTitle id="detail-title">{contract.title} details</DialogTitle>
       <DialogContent>
+        {contract.path === '/invoices' && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            The invoice total includes mobilization. Invoices are generated on
+            job completion; completed invoices can be revised using the revision
+            action.
+          </Alert>
+        )}
         {q.isPending ? (
           <LoadingState />
         ) : q.isError ? (

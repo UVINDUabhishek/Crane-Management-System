@@ -232,7 +232,7 @@ export function Metrics({
             bgcolor: 'background.paper',
             border: 1,
             borderColor: 'divider',
-            borderRadius: 2,
+            borderRadius: '10px',
           }}
         >
           <Typography variant="caption" color="text.secondary">
