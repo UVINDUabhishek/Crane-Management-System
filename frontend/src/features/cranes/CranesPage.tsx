@@ -1,17 +1,7 @@
+import { RowActions } from '../../shared/ui/RowActions';
 import { ActivationControl } from '../../shared/ui/ActivationControl';
 import { useRef, useState } from 'react';
-import {
-  Alert,
-  Button,
-  Chip,
-  IconButton,
-  Menu,
-  MenuItem,
-  Snackbar,
-  Stack,
-  useMediaQuery,
-} from '@mui/material';
-import MoreHoriz from '@mui/icons-material/MoreHoriz';
+import { Alert, Button, Chip, Snackbar, Stack } from '@mui/material';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthProvider';
@@ -40,21 +30,15 @@ export function CranesPage() {
   const { user } = useAuth(),
     cache = useQueryClient();
   const write = !!user && can(user.role, 'cranes');
-  const reduced = useMediaQuery('(prefers-reduced-motion: reduce)');
   const [status, setStatus] = useState('All');
   const [search, setSearch] = useState(''),
     [operational, setOperational] = useState('All'),
     [page, setPage] = useState(0),
     [size, setSize] = useState(5);
-  const [menu, setMenu] = useState<{
-      anchor: HTMLElement;
-      crane: CraneResponse;
-    } | null>(null),
-    [selection, setSelection] = useState<Selection | null>(null),
+  const [selection, setSelection] = useState<Selection | null>(null),
     [create, setCreate] = useState(false),
     [notice, setNotice] = useState('');
-  const queued = useRef<Selection | null>(null),
-    trigger = useRef<HTMLElement | null>(null),
+  const trigger = useRef<HTMLElement | null>(null),
     fallback = useRef<HTMLButtonElement>(null),
     lock = useRef(false);
   const query = useQuery({
@@ -146,17 +130,22 @@ export function CranesPage() {
       label: 'Actions',
       align: 'right',
       render: (c) => (
-        <IconButton
-          aria-label={`Actions for ${c.craneNumber}`}
-          aria-haspopup="menu"
-          aria-expanded={menu?.crane.id === c.id}
-          onClick={(e) => {
-            trigger.current = e.currentTarget;
-            setMenu({ anchor: e.currentTarget, crane: c });
+        <RowActions
+          reference={c.craneNumber}
+          disabled={activation.isPending}
+          view={(element) => {
+            trigger.current = element;
+            setSelection({ kind: 'view', crane: c });
           }}
-        >
-          <MoreHoriz />
-        </IconButton>
+          edit={
+            write
+              ? (element) => {
+                  trigger.current = element;
+                  setSelection({ kind: 'edit', crane: c });
+                }
+              : undefined
+          }
+        />
       ),
     },
   ];
@@ -289,37 +278,7 @@ export function CranesPage() {
           }
         />
       )}
-      <Menu
-        anchorEl={menu?.anchor}
-        open={!!menu}
-        onClose={() => setMenu(null)}
-        transitionDuration={reduced ? 0 : undefined}
-        slotProps={{
-          transition: {
-            onExited: () => {
-              if (queued.current) {
-                setSelection(queued.current);
-                queued.current = null;
-              }
-            },
-          },
-        }}
-      >
-        {(['view', ...(write ? (['edit'] as const) : [])] as const).map(
-          (kind) => (
-            <MenuItem
-              key={kind}
-              onClick={() => {
-                if (menu) queued.current = { kind, crane: menu.crane };
-                activation.reset();
-                setMenu(null);
-              }}
-            >
-              {kind === 'view' ? 'View details' : 'Edit'}
-            </MenuItem>
-          ),
-        )}
-      </Menu>
+
       {create && write && <CraneFormDialog onClose={close} onSaved={saved} />}
       {selection && selection.kind !== 'activation' && (
         <CraneDetailsDialog

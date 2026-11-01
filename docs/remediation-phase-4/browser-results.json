@@ -1,0 +1,391 @@
+{
+  "mode": "Synthetic API fixtures, not live backend acceptance",
+  "checks": [
+    {
+      "module": "Cranes",
+      "width": 1440,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Customers",
+      "width": 1440,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Job cards",
+      "width": 1440,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Timesheets",
+      "width": 1440,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Maintenance",
+      "width": 1440,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Quotations",
+      "width": 1440,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Invoices",
+      "width": 1440,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Users",
+      "width": 1440,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Cranes",
+      "width": 1440,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Customers",
+      "width": 1440,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Job cards",
+      "width": 1440,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Timesheets",
+      "width": 1440,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Maintenance",
+      "width": 1440,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Quotations",
+      "width": 1440,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Invoices",
+      "width": 1440,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Users",
+      "width": 1440,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Cranes",
+      "width": 768,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Customers",
+      "width": 768,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Job cards",
+      "width": 768,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Timesheets",
+      "width": 768,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Maintenance",
+      "width": 768,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Quotations",
+      "width": 768,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Invoices",
+      "width": 768,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Users",
+      "width": 768,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Cranes",
+      "width": 768,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Customers",
+      "width": 768,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Job cards",
+      "width": 768,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Timesheets",
+      "width": 768,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Maintenance",
+      "width": 768,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Quotations",
+      "width": 768,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Invoices",
+      "width": 768,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Users",
+      "width": 768,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Cranes",
+      "width": 390,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Customers",
+      "width": 390,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Job cards",
+      "width": 390,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Timesheets",
+      "width": 390,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Maintenance",
+      "width": 390,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Quotations",
+      "width": 390,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Invoices",
+      "width": 390,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Users",
+      "width": 390,
+      "dark": false,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Cranes",
+      "width": 390,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Customers",
+      "width": 390,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Job cards",
+      "width": 390,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Timesheets",
+      "width": 390,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Maintenance",
+      "width": 390,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Quotations",
+      "width": 390,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Invoices",
+      "width": 390,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    },
+    {
+      "module": "Users",
+      "width": 390,
+      "dark": true,
+      "touchTarget": true,
+      "detailsKeyboardFocus": true,
+      "documentOverflow": false
+    }
+  ],
+  "pageAndConsoleErrors": [],
+  "unintendedMutations": []
+}

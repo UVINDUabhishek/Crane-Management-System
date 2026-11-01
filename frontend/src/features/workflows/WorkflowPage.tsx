@@ -1,3 +1,4 @@
+import { RowActions } from '../../shared/ui/RowActions';
 import { useRef, useState } from 'react';
 import {
   Alert,
@@ -17,7 +18,6 @@ import {
   singular,
   headings,
   Value,
-  RowMenu,
   Metrics,
   fieldSection,
 } from './presentation';
@@ -93,6 +93,12 @@ export function RecordForm({
       aria-labelledby="record-form-title"
     >
       <DialogTitle id="record-form-title">{title}</DialogTitle>
+      {resource === '/invoices' && title === 'Revise' && (
+        <Alert severity="info" sx={{ mx: 3 }}>
+          Confirming creates a new draft revision and marks this invoice as
+          revised. Review the values before creating the revision.
+        </Alert>
+      )}
       {title === 'Add Job Card' && (
         <Alert severity="info" sx={{ mx: 3 }}>
           You will be recorded as the salesperson. Operator assignment is
@@ -262,7 +268,11 @@ export function RecordForm({
             variant="contained"
             disabled={mutation.isPending}
           >
-            {mutation.isPending ? 'Saving…' : 'Save'}
+            {mutation.isPending
+              ? 'Saving…'
+              : resource === '/invoices' && title === 'Revise'
+                ? 'Create revision'
+                : 'Save'}
           </Button>
         </DialogActions>
       </form>
@@ -410,6 +420,29 @@ export function WorkflowPage({ module }: { module: string }) {
     null,
   );
   const lock = useRef(false);
+  const actionTrigger = useRef<HTMLElement | null>(null);
+  const fallback = useRef<HTMLButtonElement>(null);
+  const restore = () =>
+    requestAnimationFrame(() =>
+      (actionTrigger.current?.isConnected
+        ? actionTrigger.current
+        : fallback.current
+      )?.focus(),
+    );
+  const parents = useQuery({
+    queryKey: ['/job-card'],
+    queryFn: async ({ signal }) =>
+      (await api.get<Row[]>('/job-card', { signal })).data,
+    enabled: module === 'timesheets' && !!user && c.roles.includes(user.role),
+    staleTime: 0,
+  });
+  const canChange = (r: Row) =>
+    module !== 'timesheets' ||
+    (!parents.isError &&
+      !parents.isFetching &&
+      parents.data?.some(
+        (job) => job.id === r.jobCardId && job.status === 'PENDING',
+      ));
   const q = useQuery({
     queryKey: [c.path],
     queryFn: async ({ signal }) =>
@@ -444,6 +477,7 @@ export function WorkflowPage({ module }: { module: string }) {
     onSuccess: async () => {
       await refresh();
       setConfirm(null);
+      restore();
     },
   });
   if (!user || !c.roles.includes(user.role))
@@ -504,6 +538,12 @@ export function WorkflowPage({ module }: { module: string }) {
           ]}
         />
       )}
+      {module === 'timesheets' && parents.isError && (
+        <ErrorState
+          error={parents.error}
+          retry={() => void parents.refetch()}
+        />
+      )}
       {q.isError ? (
         <ErrorState error={q.error} retry={() => void q.refetch()} />
       ) : (
@@ -518,35 +558,38 @@ export function WorkflowPage({ module }: { module: string }) {
             {
               key: 'actions',
               label: 'Actions',
+              align: 'right',
               render: (r: Row) => (
-                <RowMenu
+                <RowActions
                   reference={String(r[directories[module][0]] ?? r.id)}
-                  actions={[
-                    {
-                      label: 'Details',
-                      run: () =>
-                        setSelected({ id: Number(r.id), mode: 'view' }),
-                    },
-                    ...(c.editRoles.includes(user.role) &&
+                  disabled={mutation.isPending}
+                  view={(element) => {
+                    actionTrigger.current = element;
+                    setSelected({ id: Number(r.id), mode: 'view' });
+                  }}
+                  edit={
+                    canChange(r) &&
+                    c.editRoles.includes(user.role) &&
                     (!c.editStates || c.editStates.includes(String(r.status)))
-                      ? [
-                          {
-                            label: 'Edit',
-                            run: () =>
-                              setSelected({ id: Number(r.id), mode: 'edit' }),
-                          },
-                        ]
-                      : []),
+                      ? (element) => {
+                          actionTrigger.current = element;
+                          setSelected({ id: Number(r.id), mode: 'edit' });
+                        }
+                      : undefined
+                  }
+                  actions={[
                     ...c.actions
                       .filter(
                         (a) =>
+                          canChange(r) &&
                           a.roles.includes(user.role) &&
                           (!a.states || a.states.includes(String(r.status))) &&
                           !(module === 'users' && r.role === 'ADMIN'),
                       )
                       .map((a) => ({
                         label: a.label,
-                        run: () => {
+                        run: (element: HTMLElement) => {
+                          actionTrigger.current = element;
                           mutation.reset();
                           if (a.fields)
                             setSelected({ id: Number(r.id), mode: a });
@@ -580,7 +623,11 @@ export function WorkflowPage({ module }: { module: string }) {
                   }}
                 />
                 <Button
-                  onClick={() => void q.refetch()}
+                  ref={fallback}
+                  onClick={() => {
+                    void q.refetch();
+                    if (module === 'timesheets') void parents.refetch();
+                  }}
                   disabled={q.isFetching}
                 >
                   Refresh {c.title}
@@ -650,7 +697,10 @@ export function WorkflowPage({ module }: { module: string }) {
           contract={c}
           {...selected}
           refresh={refresh}
-          close={() => setSelected(null)}
+          close={() => {
+            setSelected(null);
+            restore();
+          }}
         />
       )}
       <ConfirmDialog
@@ -663,14 +713,20 @@ export function WorkflowPage({ module }: { module: string }) {
         description={
           module === 'operators'
             ? 'Permanently delete this operator? This cannot be undone. If the operator is referenced by existing records, deletion may be blocked and the record will be retained.'
-            : module === 'jobs' && confirm?.action.label === 'Complete'
-              ? 'Completion requires timesheets and generates an invoice. Review the recorded hours first.'
-              : confirm?.action.label === 'Deactivate'
-                ? 'This record will no longer be available for new assignments. Existing records are retained.'
-                : `Review this ${singular[module].toLowerCase()} before confirming ${confirm?.action.label.toLowerCase() ?? 'the change'}. This changes its workflow state.`
+            : module === 'timesheets'
+              ? 'Permanently delete this timesheet? This cannot be undone. The parent job must still be pending.'
+              : module === 'jobs' && confirm?.action.label === 'Complete'
+                ? 'Completion requires timesheets and generates an invoice. Review the recorded hours first.'
+                : confirm?.action.label === 'Deactivate'
+                  ? 'This record will no longer be available for new assignments. Existing records are retained.'
+                  : `Review this ${singular[module].toLowerCase()} before confirming ${confirm?.action.label.toLowerCase() ?? 'the change'}. This changes its workflow state.`
         }
         pending={mutation.isPending}
-        onClose={() => setConfirm(null)}
+        returnFocusRef={actionTrigger}
+        onClose={() => {
+          setConfirm(null);
+          restore();
+        }}
         onConfirm={() => {
           if (lock.current) return;
           lock.current = true;

@@ -111,9 +111,13 @@ async function action(user: ReturnType<typeof userEvent.setup>, name: string) {
     return await screen.findByRole('dialog');
   }
   await user.click(
-    await screen.findByRole('button', { name: 'Actions for Atlas Lifting' }),
+    await screen.findByRole('button', {
+      name:
+        name === 'Edit'
+          ? 'Edit Atlas Lifting'
+          : 'View details for Atlas Lifting',
+    }),
   );
-  await user.click(screen.getByRole('menuitem', { name }));
   return await screen.findByRole('dialog');
 }
 function fill() {
@@ -126,7 +130,7 @@ function fill() {
 it.each(['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[])(
   'enforces customer access for %s',
   async (role) => {
-    const user = await mount(role);
+    await mount(role);
     if (role === 'FINANCE' || role === 'MAINTENANCE') {
       expect(await screen.findByText('Access denied')).toBeVisible();
       expect(listRequests).toBe(0);
@@ -139,15 +143,12 @@ it.each(['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[])(
     expect(
       screen.queryByRole('button', { name: 'Add customer' }) !== null,
     ).toBe(role !== 'OPERATIONS');
-    await user.click(
-      screen.getByRole('button', { name: 'Actions for Atlas Lifting' }),
-    );
     expect(
-      screen.getByRole('menuitem', { name: 'View details' }),
+      screen.getByRole('button', { name: 'View details for Atlas Lifting' }),
     ).toBeVisible();
-    expect(screen.queryByRole('menuitem', { name: 'Edit' }) !== null).toBe(
-      role !== 'OPERATIONS',
-    );
+    expect(
+      screen.queryByRole('button', { name: 'Edit Atlas Lifting' }) !== null,
+    ).toBe(role !== 'OPERATIONS');
     expect(
       !screen
         .getByRole('switch', {
@@ -175,7 +176,7 @@ it('loads nullable rows, displays details and restores row focus', async () => {
   await user.click(within(dialog).getByRole('button', { name: 'Close' }));
   await waitFor(() =>
     expect(
-      screen.getByRole('button', { name: 'Actions for Atlas Lifting' }),
+      screen.getByRole('button', { name: 'View details for Atlas Lifting' }),
     ).toHaveFocus(),
   );
   expect(screen.queryByText(/Example company/)).not.toBeInTheDocument();
@@ -641,9 +642,8 @@ it('keeps registration in details but removes it from the directory', async () =
     screen.queryByRole('columnheader', { name: 'Registration number' }),
   ).not.toBeInTheDocument();
   await user.click(
-    screen.getByRole('button', { name: 'Actions for Atlas Lifting' }),
+    screen.getByRole('button', { name: 'View details for Atlas Lifting' }),
   );
-  await user.click(screen.getByRole('menuitem', { name: 'View details' }));
   const dialog = await screen.findByRole('dialog');
   expect(await within(dialog).findByText('REG-42')).toBeVisible();
 });

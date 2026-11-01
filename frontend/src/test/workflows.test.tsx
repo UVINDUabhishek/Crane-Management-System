@@ -17,7 +17,19 @@ import { AuthProvider } from '../features/auth/AuthProvider';
 import { server } from './setup';
 import type { Role } from '../shared/permissions';
 import { contracts } from '../features/workflows/contracts';
-async function mount(module: string, role: Role = 'ADMIN') {
+async function mount(
+  module: string,
+  role: Role = 'ADMIN',
+  parentJobs: object[] = [],
+  parentRead: () => Promise<void> = async () => {},
+) {
+  if (module === 'timesheets')
+    server.use(
+      http.get('/api/job-card', async () => {
+        await parentRead();
+        return HttpResponse.json(parentJobs);
+      }),
+    );
   server.use(
     http.post('/api/auth/login', () =>
       HttpResponse.text(
@@ -91,10 +103,16 @@ it.each([
     ),
   );
   const user = await mount(module);
-  await user.click(await screen.findByRole('button', { name: /Actions for/ }));
-  await user.click(screen.getByRole('menuitem', { name: 'Details' }));
+  await user.click(
+    await screen.findByRole('button', { name: /View details for/ }),
+  );
   expect(await screen.findByRole('dialog')).toBeVisible();
   await user.click(screen.getByRole('button', { name: 'Close' }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: /View details for/ }),
+    ).toHaveFocus(),
+  );
 });
 it.each(['quotations', 'jobs', 'timesheets', 'invoices', 'users'])(
   'rejects maintenance role for %s without fetching',
@@ -134,7 +152,9 @@ it('completes a job only through the dedicated endpoint and refreshes', async ()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
   );
   await within(screen.getByRole('table')).findByText('Completed');
-  await user.click(screen.getByRole('button', { name: /Actions for/ }));
+  expect(
+    screen.queryByRole('button', { name: /Actions for/ }),
+  ).not.toBeInTheDocument();
   expect(done).toHaveBeenCalledTimes(1);
   expect(
     screen.queryByRole('menuitem', { name: 'Complete' }),
@@ -405,9 +425,8 @@ it.each(['jobs', 'timesheets', 'maintenance', 'quotations', 'users'])(
         screen.getByRole('columnheader', { name: 'Valid Period' }),
       ).toBeVisible();
     await user.click(
-      await screen.findByRole('button', { name: /Actions for/ }),
+      await screen.findByRole('button', { name: /View details for/ }),
     );
-    await user.click(screen.getByRole('menuitem', { name: 'Details' }));
     const dialog = await screen.findByRole('dialog');
     await within(dialog).findByText(
       module === 'users' ? 'User readable' : /Full description/,
@@ -464,9 +483,8 @@ it.each([
     const user = await mount('invoices');
     expect(await screen.findByText(versionLabel)).toBeVisible();
     await user.click(
-      screen.getByRole('button', { name: 'Actions for INV-readable' }),
+      screen.getByRole('button', { name: 'View details for INV-readable' }),
     );
-    await user.click(screen.getByRole('menuitem', { name: 'Details' }));
     const dialog = await screen.findByRole('dialog');
     await within(dialog).findByText('INV-readable');
     for (const value of [
@@ -584,4 +602,399 @@ it('removes a successfully deleted operator from the refreshed directory', async
   expect(deleted).toHaveBeenCalledTimes(1);
   expect(screen.queryByText('Morgan')).not.toBeInTheDocument();
   expect(screen.getByText('No matching records')).toBeVisible();
+});
+
+// Independent role/status expectations checked against controller/service rules.
+it.each(['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[])(
+  'offers the exact workflow action matrix for %s',
+  async (role) => {
+    // Job lifecycle has no SALES completion permission.
+    const states = ['PENDING', 'COMPLETED', 'CANCELED'];
+    server.use(
+      http.get('/api/job-card', () =>
+        HttpResponse.json(
+          states.map((status, i) => ({
+            id: i + 1,
+            jobCardNumber: `JC-${status}`,
+            status,
+          })),
+        ),
+      ),
+    );
+    const user = await mount('jobs', role);
+    if (!['ADMIN', 'SALES', 'OPERATIONS'].includes(role)) {
+      expect(await screen.findByText('Access denied')).toBeVisible();
+      return;
+    }
+    for (const status of states) {
+      await screen.findByRole('button', {
+        name: `View details for JC-${status}`,
+      });
+      expect(
+        !!screen.queryByRole('button', { name: `Edit JC-${status}` }),
+      ).toBe(status === 'PENDING');
+      const menu = screen.queryByRole('button', {
+        name: `Actions for JC-${status}`,
+      });
+      if (status !== 'PENDING') {
+        expect(menu).not.toBeInTheDocument();
+        continue;
+      }
+      await user.click(menu!);
+      expect(screen.getAllByRole('menuitem').map((e) => e.textContent)).toEqual(
+        role === 'SALES' ? ['Cancel'] : ['Complete', 'Cancel'],
+      );
+      await user.keyboard('{Escape}');
+    }
+  },
+);
+it.each(['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[])(
+  'preserves invoice version/lifecycle actions for %s',
+  async (role) => {
+    const states = ['DRAFT', 'COMPLETED', 'REVISED', 'CANCELED'];
+    server.use(
+      http.get('/api/invoices', () =>
+        HttpResponse.json(
+          states.map((status, i) => ({
+            id: i + 1,
+            invoiceNumber: `INV-${status}`,
+            status,
+          })),
+        ),
+      ),
+    );
+    const user = await mount('invoices', role);
+    if (!['ADMIN', 'FINANCE'].includes(role)) {
+      expect(await screen.findByText('Access denied')).toBeVisible();
+      return;
+    }
+    for (const status of states) {
+      await screen.findByRole('button', {
+        name: `View details for INV-${status}`,
+      });
+      expect(
+        !!screen.queryByRole('button', { name: `Edit INV-${status}` }),
+      ).toBe(status === 'DRAFT');
+      const expected =
+        status === 'DRAFT'
+          ? ['Complete', 'Cancel']
+          : status === 'COMPLETED'
+            ? ['Cancel', 'Revise']
+            : [];
+      const menu = screen.queryByRole('button', {
+        name: `Actions for INV-${status}`,
+      });
+      if (!expected.length) {
+        expect(menu).not.toBeInTheDocument();
+        continue;
+      }
+      await user.click(menu!);
+      expect(screen.getAllByRole('menuitem').map((e) => e.textContent)).toEqual(
+        expected,
+      );
+      await user.keyboard('{Escape}');
+    }
+  },
+);
+it.each(['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[])(
+  'preserves maintenance terminal editing and role restrictions for %s',
+  async (role) => {
+    const states = ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELED'];
+    server.use(
+      http.get('/api/maintenance', () =>
+        HttpResponse.json(
+          states.map((status, i) => ({
+            id: i + 1,
+            maintenanceNumber: `MT-${status}`,
+            status,
+          })),
+        ),
+      ),
+    );
+    const user = await mount('maintenance', role);
+    if (!['ADMIN', 'OPERATIONS', 'MAINTENANCE'].includes(role)) {
+      expect(await screen.findByText('Access denied')).toBeVisible();
+      return;
+    }
+    for (const status of states) {
+      await screen.findByRole('button', {
+        name: `View details for MT-${status}`,
+      });
+      expect(
+        screen.getByRole('button', { name: `Edit MT-${status}` }),
+      ).toBeVisible();
+      const expected =
+        role === 'OPERATIONS'
+          ? []
+          : status === 'SCHEDULED'
+            ? ['Start', 'Complete', 'Cancel']
+            : status === 'IN_PROGRESS'
+              ? ['Complete', 'Cancel']
+              : [];
+      const menu = screen.queryByRole('button', {
+        name: `Actions for MT-${status}`,
+      });
+      if (!expected.length) {
+        expect(menu).not.toBeInTheDocument();
+        continue;
+      }
+      await user.click(menu!);
+      expect(screen.getAllByRole('menuitem').map((e) => e.textContent)).toEqual(
+        expected,
+      );
+      await user.keyboard('{Escape}');
+    }
+  },
+);
+it.each(['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[])(
+  'restricts timesheet changes by parent status for %s',
+  async (role) => {
+    const states = ['PENDING', 'COMPLETED', 'CANCELED', 'UNKNOWN'];
+    server.use(
+      http.get('/api/timesheets', () =>
+        HttpResponse.json(
+          states.map((state, i) => ({
+            id: i + 1,
+            jobCardId: i + 1,
+            timesheetNumber: `TS-${state}`,
+          })),
+        ),
+      ),
+    );
+    const user = await mount(
+      'timesheets',
+      role,
+      states.slice(0, 3).map((status, i) => ({ id: i + 1, status })),
+    );
+    if (!['ADMIN', 'OPERATIONS'].includes(role)) {
+      expect(await screen.findByText('Access denied')).toBeVisible();
+      return;
+    }
+    await screen.findByRole('button', { name: 'Edit TS-PENDING' });
+    for (const state of states) {
+      expect(
+        screen.getByRole('button', { name: `View details for TS-${state}` }),
+      ).toBeVisible();
+      expect(!!screen.queryByRole('button', { name: `Edit TS-${state}` })).toBe(
+        state === 'PENDING',
+      );
+      const menu = screen.queryByRole('button', {
+        name: `Actions for TS-${state}`,
+      });
+      if (state !== 'PENDING') {
+        expect(menu).not.toBeInTheDocument();
+        continue;
+      }
+      await user.click(menu!);
+      expect(screen.getAllByRole('menuitem').map((e) => e.textContent)).toEqual(
+        ['Delete'],
+      );
+      await user.keyboard('{Escape}');
+    }
+  },
+);
+it.each(
+  ['quotations', 'users', 'operators'].flatMap((module) =>
+    (['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[]).map(
+      (role) => ({ module, role }),
+    ),
+  ),
+)(
+  '$role keeps explicit account/commercial actions in $module',
+  async ({ module, role }) => {
+    if (module === 'operators')
+      server.use(http.get('/api/admin/users', () => HttpResponse.json([])));
+    const row =
+      module === 'quotations'
+        ? { id: 1, quotationNumber: 'QT-1' }
+        : module === 'users'
+          ? { id: 1, username: 'Sales user', role: 'SALES' }
+          : { id: 1, operatorName: 'Morgan' };
+    server.use(
+      http.get('/api' + contracts[module].path, () => HttpResponse.json([row])),
+    );
+    const user = await mount(module === 'operators' ? 'users' : module, role);
+    if (
+      !(module === 'quotations' ? ['ADMIN', 'SALES'] : ['ADMIN']).includes(role)
+    ) {
+      expect(await screen.findByText('Access denied')).toBeVisible();
+      return;
+    }
+    if (module === 'operators')
+      await user.click(screen.getByRole('tab', { name: 'Operators' }));
+    await screen.findByRole('button', { name: /View details for/ });
+    expect(!!screen.queryByRole('button', { name: /^Edit / })).toBe(
+      module !== 'operators',
+    );
+    await user.click(screen.getByRole('button', { name: /Actions for/ }));
+    expect(screen.getAllByRole('menuitem').map((e) => e.textContent)).toEqual([
+      module === 'operators' ? 'Delete' : 'Deactivate',
+    ]);
+  },
+);
+it('does not offer admin account deactivation', async () => {
+  server.use(
+    http.get('/api/admin/users', () =>
+      HttpResponse.json([{ id: 1, username: 'Admin', role: 'ADMIN' }]),
+    ),
+  );
+  await mount('users');
+  await screen.findByRole('button', { name: 'View details for Admin' });
+  expect(screen.getByRole('button', { name: 'Edit Admin' })).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: 'Actions for Admin' }),
+  ).not.toBeInTheDocument();
+});
+
+it('loads parent jobs once for all timesheet rows and fails closed with retry', async () => {
+  const { createRequestGate } = await import('./requestGate');
+  const gate = createRequestGate();
+  const read = vi.fn(() => gate.wait());
+  const jobs = [1, 2, 3].map((id) => ({ id, status: 'PENDING' }));
+  server.use(
+    http.get('/api/timesheets', () =>
+      HttpResponse.json(
+        jobs.map((job) => ({
+          id: job.id,
+          jobCardId: job.id,
+          timesheetNumber: `TS-${job.id}`,
+        })),
+      ),
+    ),
+  );
+  const user = await mount('timesheets', 'ADMIN', jobs, read);
+  try {
+    await gate.started;
+    await screen.findByRole('button', { name: 'View details for TS-1' });
+    expect(
+      screen.getAllByRole('button', { name: /View details for TS-/ }),
+    ).toHaveLength(3);
+    expect(
+      screen.queryByRole('button', { name: /^Edit TS-/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /^Actions for TS-/ }),
+    ).not.toBeInTheDocument();
+    expect(read).toHaveBeenCalledTimes(1);
+  } finally {
+    gate.release();
+  }
+  await screen.findByRole('button', { name: 'Edit TS-1' });
+  expect(screen.getAllByRole('button', { name: /^Edit TS-/ })).toHaveLength(3);
+  server.use(
+    http.get('/api/job-card', () =>
+      HttpResponse.json({ detail: 'Unavailable' }, { status: 503 }),
+    ),
+  );
+  await user.click(screen.getByRole('button', { name: 'Refresh Timesheets' }));
+  expect(await screen.findByText('Unable to load this content')).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: /^Edit TS-/ }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getAllByRole('button', { name: /View details for TS-/ }),
+  ).toHaveLength(3);
+  server.use(http.get('/api/job-card', () => HttpResponse.json(jobs)));
+  await user.click(screen.getByRole('button', { name: 'Retry' }));
+  await screen.findByRole('button', { name: 'Edit TS-1' });
+});
+it('opens revision review without mutation and preserves the versioned endpoint on confirmation', async () => {
+  const revise = vi.fn();
+  const invoice = {
+    id: 1,
+    invoiceNumber: 'INV-1',
+    status: 'COMPLETED',
+    version: 1,
+    qty: 8,
+    rate: 100,
+    mobilization: 50,
+    description: 'Lift',
+  };
+  server.use(
+    http.get('/api/invoices', () => HttpResponse.json([invoice])),
+    http.get('/api/invoices/1', () => HttpResponse.json(invoice)),
+    http.patch('/api/invoices/1/revise', async ({ request }) => {
+      revise(await request.json());
+      return HttpResponse.json({
+        ...invoice,
+        id: 2,
+        version: 2,
+        status: 'DRAFT',
+      });
+    }),
+  );
+  const user = await mount('invoices', 'FINANCE');
+  await user.click(
+    await screen.findByRole('button', { name: 'Actions for INV-1' }),
+  );
+  await user.click(screen.getByRole('menuitem', { name: 'Revise' }));
+  const create = await screen.findByRole('button', { name: 'Create revision' });
+  expect(screen.getByText(/creates a new draft revision/)).toBeVisible();
+  expect(revise).not.toHaveBeenCalled();
+  await user.click(create);
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
+  expect(revise).toHaveBeenCalledExactlyOnceWith({
+    qty: 8,
+    rate: 100,
+    mobilization: 50,
+    description: 'Lift',
+  });
+});
+
+it('confirms timesheet deletion, prevents duplicates and retains a server lifecycle conflict', async () => {
+  const { createRequestGate } = await import('./requestGate');
+  const gate = createRequestGate(),
+    remove = vi.fn();
+  server.use(
+    http.get('/api/timesheets', () =>
+      HttpResponse.json([{ id: 1, jobCardId: 1, timesheetNumber: 'TS-1' }]),
+    ),
+    http.delete('/api/timesheets/1', async () => {
+      remove();
+      await gate.wait();
+      return HttpResponse.json(
+        { detail: 'Parent job is no longer pending.' },
+        { status: 409 },
+      );
+    }),
+  );
+  const user = await mount('timesheets', 'OPERATIONS', [
+    { id: 1, status: 'PENDING' },
+  ]);
+  await user.click(
+    await screen.findByRole('button', { name: 'Actions for TS-1' }),
+  );
+  await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+  const dialog = await screen.findByRole('dialog');
+  expect(
+    within(dialog).getByText(/Permanently delete this timesheet/),
+  ).toBeVisible();
+  await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+  expect(remove).not.toHaveBeenCalled();
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Actions for TS-1' }),
+    ).toHaveFocus(),
+  );
+  await user.click(screen.getByRole('button', { name: 'Actions for TS-1' }));
+  await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+  await user.click(await screen.findByRole('button', { name: 'Confirm' }));
+  try {
+    await gate.started;
+    expect(screen.getByRole('button', { name: 'Working…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(remove).toHaveBeenCalledTimes(1);
+  } finally {
+    gate.release();
+  }
+  expect(
+    await screen.findByText('Parent job is no longer pending.'),
+  ).toBeVisible();
+  expect(
+    within(screen.getByRole('table', { hidden: true })).getByText('TS-1'),
+  ).toBeInTheDocument();
 });

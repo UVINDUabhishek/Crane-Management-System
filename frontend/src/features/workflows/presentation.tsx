@@ -1,13 +1,5 @@
-import { useId, useState, type ReactNode } from 'react';
-import {
-  Box,
-  IconButton,
-  Menu,
-  MenuItem,
-  Stack,
-  Typography,
-} from '@mui/material';
-import MoreHoriz from '@mui/icons-material/MoreHoriz';
+import type { ReactNode } from 'react';
+import { Box, Stack, Typography } from '@mui/material';
 import {
   StatusChip,
   type BusinessStatus,
@@ -163,47 +155,6 @@ export function Value({ field, row }: { field: string; row: Row }) {
     >
       {formatValue(field, row[field])}
     </Typography>
-  );
-}
-export function RowMenu({
-  reference,
-  actions,
-}: {
-  reference: string;
-  actions: { label: string; run: () => void }[];
-}) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  const id = useId();
-  return (
-    <>
-      <IconButton
-        aria-label={`Actions for ${reference}`}
-        aria-haspopup="menu"
-        aria-controls={anchor ? id : undefined}
-        aria-expanded={!!anchor}
-        onClick={(e) => setAnchor(e.currentTarget)}
-      >
-        <MoreHoriz />
-      </IconButton>
-      <Menu
-        id={id}
-        anchorEl={anchor}
-        open={!!anchor}
-        onClose={() => setAnchor(null)}
-      >
-        {actions.map((action) => (
-          <MenuItem
-            key={action.label}
-            onClick={() => {
-              setAnchor(null);
-              action.run();
-            }}
-          >
-            {action.label}
-          </MenuItem>
-        ))}
-      </Menu>
-    </>
   );
 }
 export function Metrics({

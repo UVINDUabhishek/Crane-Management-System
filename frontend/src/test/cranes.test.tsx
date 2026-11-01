@@ -93,9 +93,10 @@ async function mount(role: Role = 'ADMIN') {
 }
 async function action(user: ReturnType<typeof userEvent.setup>, name: string) {
   await user.click(
-    await screen.findByRole('button', { name: 'Actions for CR080T001' }),
+    await screen.findByRole('button', {
+      name: name === 'Edit' ? 'Edit CR080T001' : 'View details for CR080T001',
+    }),
   );
-  await user.click(screen.getByRole('menuitem', { name }));
   return await screen.findByRole('dialog');
 }
 it.each(['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[])(
@@ -105,6 +106,12 @@ it.each(['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[])(
     if (role === 'ADMIN' || role === 'SALES') {
       expect(await screen.findByText('CR080T001')).toBeVisible();
       expect(screen.getByRole('button', { name: 'Add crane' })).toBeVisible();
+      expect(
+        screen.getByRole('button', { name: 'Edit CR080T001' }),
+      ).toBeVisible();
+      expect(
+        screen.getByRole('button', { name: 'View details for CR080T001' }),
+      ).toBeVisible();
     } else {
       expect(await screen.findByText('Access denied')).toBeVisible();
       expect(calls).toBe(0);
@@ -120,7 +127,7 @@ it('loads actual details and restores focus without editable number/status', asy
   await user.click(within(dialog).getByRole('button', { name: 'Close' }));
   await waitFor(() =>
     expect(
-      screen.getByRole('button', { name: 'Actions for CR080T001' }),
+      screen.getByRole('button', { name: 'View details for CR080T001' }),
     ).toHaveFocus(),
   );
 });
