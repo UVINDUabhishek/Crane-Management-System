@@ -14,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import jakarta.transaction.Transactional;
 import java.util.Optional;
 
@@ -40,6 +42,8 @@ public class TimesheetService {
         if(jobCard.getStatus() != JobCardStatus.PENDING) {
             throw BusinessException.conflict("Timesheet can only be added to a pending Job Card");
         }
+
+        validateWorkDate(request.getDateOfWork());
 
         // Prevent duplicate Timesheet for the same Job Card and date
         if (timesheetRepository.existsByJobCardAndDateOfWork(
@@ -132,6 +136,8 @@ public class TimesheetService {
             throw BusinessException.conflict("Timesheet cannot be updated because the Job Card is not pending");
         }
 
+        validateWorkDate(request.getDateOfWork());
+
         if(request.getDateOfWork() != null) {
 
             // Check if another Timesheet already uses this date
@@ -185,6 +191,13 @@ public class TimesheetService {
         }
 
         timesheetRepository.delete(timesheet);
+    }
+
+    private void validateWorkDate(LocalDate date) {
+        // Same business-local date as the browser; do not convert a LocalDate through UTC.
+        if (date != null && date.isAfter(LocalDate.now(ZoneId.of("Asia/Colombo")))) {
+            throw BusinessException.invalid("Date of work cannot be later than today (Asia/Colombo)");
+        }
     }
 
     // Mapping Method

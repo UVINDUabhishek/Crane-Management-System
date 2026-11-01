@@ -144,7 +144,7 @@ export function createAppTheme(dark: boolean) {
       },
       MuiTableCell: {
         styleOverrides: {
-          root: { borderColor: border, padding: '16px 20px' },
+          root: { borderColor: border, padding: '13px 16px' },
           head: {
             backgroundColor: dark ? '#1d303e' : '#f8fafc',
             color: dark ? '#b5c7d6' : '#566c7f',

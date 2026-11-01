@@ -1,0 +1,13 @@
+{
+  "mode": "Synthetic API fixtures; no live-backend browser acceptance",
+  "widths": [
+    1440,
+    768,
+    390
+  ],
+  "keyboardSelection": true,
+  "dependentClear": true,
+  "quotationFiltering": true,
+  "dialogOverflow": false,
+  "pageErrors": []
+}

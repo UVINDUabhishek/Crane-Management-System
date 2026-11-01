@@ -38,7 +38,7 @@ class ValidationStateIntegrationTest extends AbstractIntegrationTest {
             mockMvc.perform(authorized(patch("/api/job-card/{id}/" + action, job.getId()))).andExpect(status().isConflict());
         }
         String sheetBody = """
-                {"jobCardId":%d,"dateOfWork":"2026-11-11","workedHours":9,"description":"Changed"}
+                {"jobCardId":%d,"dateOfWork":"2020-01-02","workedHours":9,"description":"Changed"}
                 """.formatted(job.getId());
         mockMvc.perform(json(authorized(post("/api/timesheets")), sheetBody)).andExpect(status().isConflict());
         mockMvc.perform(json(authorized(put("/api/timesheets/{id}", sheet.getId())), sheetBody)).andExpect(status().isConflict());
@@ -178,7 +178,7 @@ class ValidationStateIntegrationTest extends AbstractIntegrationTest {
         String maintenance = fixtures.maintenanceBody(job.getCraneId().getId()).replace("{", "{\"maintenancePersonId\":-1,");
         mockMvc.perform(json(authorized(post("/api/maintenance")), maintenance)).andExpect(status().isBadRequest());
         mockMvc.perform(json(authorized(post("/api/timesheets")), """
-                {"jobCardId":-1,"dateOfWork":"2026-11-10","workedHours":1}
+                {"jobCardId":-1,"dateOfWork":"2020-01-01","workedHours":1}
                 """ )).andExpect(status().isBadRequest());
     }
 
@@ -201,7 +201,7 @@ class ValidationStateIntegrationTest extends AbstractIntegrationTest {
         List<Integer> results = raceOnJob(job.getId(),
                 () -> mockMvc.perform(authorized(patch("/api/job-card/{id}/complete", job.getId()))).andReturn().getResponse().getStatus(),
                 () -> mockMvc.perform(json(authorized(post("/api/timesheets")), """
-                        {"jobCardId":%d,"dateOfWork":"2026-11-11","workedHours":10}
+                        {"jobCardId":%d,"dateOfWork":"2020-01-02","workedHours":10}
                         """.formatted(job.getId()))).andReturn().getResponse().getStatus());
         assertThat(results.getFirst()).isEqualTo(200);
         assertThat(results.get(1)).isIn(201, 409);

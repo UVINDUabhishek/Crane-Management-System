@@ -41,6 +41,7 @@ import { useAuth } from '../features/auth/AuthProvider';
 import { can, modules, type Permission } from '../shared/permissions';
 const icons = {
   dashboard: DashboardOutlined,
+  reports: ReceiptLongOutlined,
   cranes: ConstructionOutlined,
   customers: PeopleOutline,
   quotations: DescriptionOutlined,
@@ -51,7 +52,7 @@ const icons = {
   users: ManageAccountsOutlined,
 };
 const groups: { title: string; keys: Permission[] }[] = [
-  { title: 'Workspace', keys: ['dashboard'] },
+  { title: 'Workspace', keys: ['dashboard', 'reports'] },
   {
     title: 'Operations',
     keys: ['cranes', 'jobs', 'timesheets', 'maintenance'],
@@ -88,7 +89,7 @@ export function AppShell({
         direction="row"
         alignItems="center"
         spacing={1.5}
-        sx={{ px: 3, py: 3.5 }}
+        sx={{ px: 3, py: 2.5 }}
       >
         <Box
           sx={{
@@ -130,13 +131,13 @@ export function AppShell({
         )}
       </Stack>
       <Divider sx={{ borderColor: 'navigation.border', mx: 3 }} />
-      <Box sx={{ p: 2, overflowY: 'auto', flex: 1 }}>
+      <Box sx={{ p: 2, overflowY: 'auto', minHeight: 0, flex: 1 }}>
         {groups.map((group) => {
           const visible = group.keys.filter(
             (key) => user && can(user.role, key),
           );
           return visible.length ? (
-            <Box key={group.title} sx={{ mt: 2, mb: 2.5 }}>
+            <Box key={group.title} sx={{ mt: 1.5, mb: 2 }}>
               <Typography
                 variant="overline"
                 sx={{ px: 1.5, color: 'navigation.muted' }}
@@ -196,22 +197,6 @@ export function AppShell({
                             },
                           }}
                         />
-                        {key !== 'dashboard' && key !== 'customers' && (
-                          <Box
-                            component="span"
-                            sx={{
-                              fontSize: '.62rem',
-                              color: 'navigation.text',
-                              border: 1,
-                              borderColor: 'navigation.border',
-                              borderRadius: 1,
-                              px: 0.6,
-                              py: 0.15,
-                            }}
-                          >
-                            Planned
-                          </Box>
-                        )}
                       </ListItemButton>
                     </ListItem>
                   );
@@ -257,14 +242,14 @@ export function AppShell({
       <Box
         component="nav"
         aria-label="Main navigation"
-        sx={{ width: { md: 264 }, flexShrink: 0 }}
+        sx={{ width: { md: 248 }, flexShrink: 0 }}
       >
         {desktop ? (
           <Drawer
             variant="permanent"
             slotProps={{
               paper: {
-                sx: { width: 264, bgcolor: 'navigation.background', border: 0 },
+                sx: { width: 248, bgcolor: 'navigation.background', border: 0 },
               },
             }}
           >
@@ -296,7 +281,7 @@ export function AppShell({
             sx={{
               gap: { xs: 1, sm: 2 },
               px: { xs: 2, md: 4 },
-              minHeight: { xs: 68, sm: 76 },
+              minHeight: { xs: 64, sm: 68 },
             }}
           >
             {!desktop && (
@@ -310,7 +295,9 @@ export function AppShell({
             )}
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="body2" fontWeight={700}>
-                {title}
+                {groups.find(
+                  (group) => current && group.keys.includes(current.key),
+                )?.title ?? 'Workspace'}
               </Typography>
               <Typography
                 variant="caption"
@@ -376,12 +363,12 @@ export function AppShell({
           component="main"
           id="main-content"
           tabIndex={-1}
-          sx={{ p: { xs: 2, md: 4 }, maxWidth: 1640, mx: 'auto', outline: 0 }}
+          sx={{ p: { xs: 2, md: 3 }, maxWidth: 1640, mx: 'auto', outline: 0 }}
         >
           <Breadcrumbs
             aria-label="Breadcrumb"
             separator={<ChevronRight sx={{ fontSize: 14 }} />}
-            sx={{ mb: 3, fontSize: '.75rem' }}
+            sx={{ mb: 1.5, fontSize: '.75rem' }}
           >
             <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>
               Workspace

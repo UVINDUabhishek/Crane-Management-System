@@ -15,7 +15,7 @@ public interface QuotationRepository extends JpaRepository<Quotation, Long> {
 
     @Query("""
             select new com.uvindu.crane_management_system.dto.QuotationLookupResponse(
-                q.id, q.quotationNumber, q.customerId.id)
+                q.id, q.quotationNumber, q.customerId.id, q.type, q.validFrom, q.validTo)
             from Quotation q where q.active = true
             order by q.quotationNumber asc, q.id asc
             """)
