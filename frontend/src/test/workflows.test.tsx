@@ -697,7 +697,7 @@ it.each(['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[])(
   },
 );
 it.each(['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[])(
-  'preserves maintenance terminal editing and role restrictions for %s',
+  'enforces maintenance terminal immutability and role restrictions for %s',
   async (role) => {
     const states = ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELED'];
     server.use(
@@ -721,8 +721,8 @@ it.each(['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[])(
         name: `View details for MT-${status}`,
       });
       expect(
-        screen.getByRole('button', { name: `Edit MT-${status}` }),
-      ).toBeVisible();
+        !!screen.queryByRole('button', { name: `Edit MT-${status}` }),
+      ).toBe(['SCHEDULED', 'IN_PROGRESS'].includes(status));
       const expected =
         role === 'OPERATIONS'
           ? []
@@ -971,6 +971,35 @@ it('confirms timesheet deletion, prevents duplicates and retains a server lifecy
   expect(
     within(dialog).getByText(/Permanently delete this timesheet/),
   ).toBeVisible();
+  const parentGate = createRequestGate();
+  const trigger = screen.getByRole('button', {
+    name: 'Actions for TS-1',
+    hidden: true,
+  });
+  server.use(
+    http.get('/api/job-card', async () => {
+      await parentGate.wait();
+      return HttpResponse.json([{ id: 1, status: 'PENDING' }]);
+    }),
+  );
+  // Simulate background revalidation while the confirmation owns focus.
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Refresh Timesheets', hidden: true }),
+  );
+  try {
+    await parentGate.started;
+    await waitFor(() => expect(trigger).toBeDisabled());
+    expect(trigger).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: 'View details for TS-1',
+        hidden: true,
+      }),
+    ).toBeEnabled();
+  } finally {
+    parentGate.release();
+  }
+  await waitFor(() => expect(trigger).toBeEnabled());
   await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
   expect(remove).not.toHaveBeenCalled();
   await waitFor(() =>
@@ -997,4 +1026,50 @@ it('confirms timesheet deletion, prevents duplicates and retains a server lifecy
   expect(
     within(screen.getByRole('table', { hidden: true })).getByText('TS-1'),
   ).toBeInTheDocument();
+});
+
+it('retains maintenance edits after a concurrent terminal-state conflict', async () => {
+  const record = {
+    id: 1,
+    maintenanceNumber: 'MT-1',
+    status: 'SCHEDULED',
+    craneId: 1,
+    crane: 'CR-1',
+    maintenanceStartDate: '2026-10-01',
+    maintenanceEndDate: '2026-10-02',
+    maintenanceType: 'SERVICE',
+    maintenancePersonId: null,
+    description: 'Original',
+  };
+  const update = vi.fn();
+  server.use(
+    http.get('/api/maintenance', () => HttpResponse.json([record])),
+    http.get('/api/maintenance/1', () => HttpResponse.json(record)),
+    http.get('/api/lookups/cranes', () =>
+      HttpResponse.json([{ id: 1, label: 'CR-1', type: '080T' }]),
+    ),
+    http.get('/api/lookups/maintenance-people', () => HttpResponse.json([])),
+    http.put('/api/maintenance/1', async ({ request }) => {
+      update(await request.json());
+      return HttpResponse.json(
+        { detail: 'Completed or canceled maintenance cannot be updated' },
+        { status: 409 },
+      );
+    }),
+  );
+  const user = await mount('maintenance');
+  await user.click(await screen.findByRole('button', { name: 'Edit MT-1' }));
+  const description = await screen.findByLabelText('Description', {
+    exact: false,
+  });
+  fireEvent.change(description, { target: { value: 'Retained edits' } });
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(
+    await screen.findByText(
+      'Completed or canceled maintenance cannot be updated',
+    ),
+  ).toBeVisible();
+  expect(description).toHaveValue('Retained edits');
+  expect(screen.getByRole('dialog')).toBeVisible();
+  expect(update).toHaveBeenCalledTimes(1);
 });

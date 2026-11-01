@@ -21,12 +21,14 @@ export function RowActions({
   edit,
   actions = [],
   disabled = false,
+  changesDisabled = false,
 }: {
   reference: string;
   view: RowAction['run'];
   edit?: RowAction['run'];
   actions?: RowAction[];
   disabled?: boolean;
+  changesDisabled?: boolean;
 }) {
   const id = useId();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
@@ -55,7 +57,7 @@ export function RowActions({
         <Tooltip title="Edit">
           <span>
             <IconButton
-              disabled={disabled}
+              disabled={disabled || changesDisabled}
               aria-label={`Edit ${reference}`}
               sx={{ width: 44, height: 44 }}
               onClick={(e) => edit(e.currentTarget)}
@@ -69,7 +71,7 @@ export function RowActions({
         <Tooltip title="More actions">
           <span>
             <IconButton
-              disabled={disabled}
+              disabled={disabled || changesDisabled}
               aria-label={`Actions for ${reference}`}
               aria-haspopup="menu"
               aria-expanded={!!anchor}
@@ -107,7 +109,7 @@ export function RowActions({
         {actions.map((action) => (
           <MenuItem
             key={action.label}
-            disabled={disabled || action.disabled}
+            disabled={disabled || changesDisabled || action.disabled}
             sx={{ minHeight: 44 }}
             onClick={() => {
               queued.current = action;

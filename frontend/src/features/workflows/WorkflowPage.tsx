@@ -439,7 +439,6 @@ export function WorkflowPage({ module }: { module: string }) {
   const canChange = (r: Row) =>
     module !== 'timesheets' ||
     (!parents.isError &&
-      !parents.isFetching &&
       parents.data?.some(
         (job) => job.id === r.jobCardId && job.status === 'PENDING',
       ));
@@ -563,6 +562,9 @@ export function WorkflowPage({ module }: { module: string }) {
                 <RowActions
                   reference={String(r[directories[module][0]] ?? r.id)}
                   disabled={mutation.isPending}
+                  changesDisabled={
+                    module === 'timesheets' && parents.isFetching
+                  }
                   view={(element) => {
                     actionTrigger.current = element;
                     setSelected({ id: Number(r.id), mode: 'view' });

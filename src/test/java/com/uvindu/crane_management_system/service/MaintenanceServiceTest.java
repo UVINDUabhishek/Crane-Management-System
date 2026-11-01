@@ -45,6 +45,21 @@ class MaintenanceServiceTest extends BaseUnitTest {
     @InjectMocks
     private MaintenanceService maintenanceService;
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = MaintenanceStatus.class, names = {"COMPLETED", "CANCELED"})
+    void terminalUpdateHasNoSideEffects(MaintenanceStatus status) {
+        Maintenance record = MaintenanceTestDataBuilder.createMaintenance(1L, "MT-1", status);
+        String description = record.getDescription();
+        when(maintenanceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(record));
+        assertThatThrownBy(() -> maintenanceService.updateMaintenance(1L,
+                MaintenanceTestDataBuilder.createUpdateMaintenanceRequest(1L)))
+                .hasMessage("Completed or canceled maintenance cannot be updated");
+        assertThat(record.getDescription()).isEqualTo(description);
+        assertThat(record.getStatus()).isEqualTo(status);
+        verify(maintenanceRepository, never()).save(any());
+        verifyNoInteractions(craneRepository, userRepository, craneService, schedulingService);
+    }
+
     @Test
     void shouldCreateMaintenanceSuccessfully() {
         // Arrange
@@ -199,12 +214,13 @@ class MaintenanceServiceTest extends BaseUnitTest {
                 .hasMessage("Maintenance not found");
     }
 
-    @Test
-    void shouldUpdateMaintenance() {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = MaintenanceStatus.class, names = {"SCHEDULED", "IN_PROGRESS"})
+    void shouldUpdateMaintenance(MaintenanceStatus state) {
         // Arrange
         Crane crane = MaintenanceTestDataBuilder.createCrane(1L);
         User maintenancePerson = MaintenanceTestDataBuilder.createMaintenancePerson(2L);
-        Maintenance existingMaintenance = MaintenanceTestDataBuilder.createMaintenance(1L, "MT-0001", MaintenanceStatus.SCHEDULED);
+        Maintenance existingMaintenance = MaintenanceTestDataBuilder.createMaintenance(1L, "MT-0001", state);
         existingMaintenance.setCrane(crane);
 
         UpdateMaintenanceRequest request = MaintenanceTestDataBuilder.createUpdateMaintenanceRequest(1L);

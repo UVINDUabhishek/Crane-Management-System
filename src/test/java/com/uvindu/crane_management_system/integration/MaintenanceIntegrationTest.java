@@ -9,6 +9,30 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.uvindu.crane_management_system.integration.support.AbstractIntegrationTest;
 
 class MaintenanceIntegrationTest extends AbstractIntegrationTest {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(MaintenanceStatus.class)
+    void updateHonorsLifecycle(MaintenanceStatus state) throws Exception {
+        Maintenance record = createMaintenance();
+        Long craneId = record.getCrane().getId();
+        if (state != MaintenanceStatus.SCHEDULED) {
+            String action = state == MaintenanceStatus.IN_PROGRESS ? "start"
+                    : state == MaintenanceStatus.COMPLETED ? "complete" : "cancel";
+            mockMvc.perform(authorized(patch("/api/maintenance/{id}/" + action, record.getId())))
+                    .andExpect(status().isOk());
+        }
+        String before = maintenanceRepository.findById(record.getId()).orElseThrow().getDescription();
+        CraneStatus craneBefore = craneRepository.findById(craneId).orElseThrow().getStatus();
+        String body = fixtures.maintenanceBody(craneId).replace("Scheduled inspection", "Changed");
+        boolean terminal = state == MaintenanceStatus.COMPLETED || state == MaintenanceStatus.CANCELED;
+        mockMvc.perform(json(authorized(put("/api/maintenance/{id}", record.getId())), body))
+                .andExpect(status().is(terminal ? 409 : 200));
+        Maintenance persisted = maintenanceRepository.findById(record.getId()).orElseThrow();
+        assertThat(persisted.getStatus()).isEqualTo(state);
+        assertThat(persisted.getCrane().getId()).isEqualTo(craneId);
+        assertThat(craneRepository.findById(craneId).orElseThrow().getStatus()).isEqualTo(craneBefore);
+        assertThat(persisted.getDescription()).isEqualTo(terminal ? before : "Changed");
+    }
+
     private Maintenance createMaintenance() throws Exception {
         Crane crane = fixtures.fixtureCrane();
         mockMvc.perform(json(authorized(post("/api/maintenance")), fixtures.maintenanceBody(crane.getId())))

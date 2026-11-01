@@ -1,5 +1,7 @@
 # Final remediation — Phase 4: unified row actions
 
+> The recovered [acceptance fixes](acceptance-fixes.md) supersede the terminal-maintenance editing policy recorded below. That matrix describes the original Phase 4 delivery.
+
 Continues `1329c2bd3fdb84d9915c9bbafdf52ec4cfa047ab` on `fix/chms-final-remediation`. Scope is the detailed Phase 4 request supplied in chat; `ACTION column(1).txt` and `CHMS_REVIEWED_CHANGES.md` were not present in this checkout. Backend controller/service rules were inspected directly. No backend, database, DTO, endpoint, permission or calculation changes. No push or merge.
 
 ## Interaction pattern

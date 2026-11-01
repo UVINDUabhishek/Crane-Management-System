@@ -129,6 +129,11 @@ public class MaintenanceService {
         Maintenance maintenance = maintenanceRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> BusinessException.notFound("Maintenance not found"));
 
+        if (maintenance.getStatus() == MaintenanceStatus.COMPLETED
+                || maintenance.getStatus() == MaintenanceStatus.CANCELED) {
+            throw BusinessException.conflict("Completed or canceled maintenance cannot be updated");
+        }
+
         SchedulingService.validateDates(request.getMaintenanceStartDate(), request.getMaintenanceEndDate());
         Long previousCraneId = maintenance.getCrane().getId();
         schedulingService.lockCranes(previousCraneId, request.getCraneId());

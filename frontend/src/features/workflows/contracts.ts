@@ -390,6 +390,7 @@ export const contracts: Record<string, Contract> = {
     ],
   },
   maintenance: {
+    editStates: ['SCHEDULED', 'IN_PROGRESS'],
     title: 'Maintenance',
     path: '/maintenance',
     roles: ['ADMIN', 'OPERATIONS', 'MAINTENANCE'],
