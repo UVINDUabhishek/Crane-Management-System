@@ -1,0 +1,205 @@
+{
+  "mode": "Chromium with synthetic API fixtures. Not live-backend acceptance.",
+  "browserVersion": "154.0.8037.57",
+  "checks": [
+    {
+      "report": "jobs",
+      "width": 1440,
+      "theme": "light",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "revenue-summary",
+      "width": 1440,
+      "theme": "light",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "maintenance",
+      "width": 1440,
+      "theme": "light",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "invoices",
+      "width": 1440,
+      "theme": "light",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "jobs",
+      "width": 1440,
+      "theme": "dark",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "revenue-summary",
+      "width": 1440,
+      "theme": "dark",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "maintenance",
+      "width": 1440,
+      "theme": "dark",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "invoices",
+      "width": 1440,
+      "theme": "dark",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "jobs",
+      "width": 768,
+      "theme": "light",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "revenue-summary",
+      "width": 768,
+      "theme": "light",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "maintenance",
+      "width": 768,
+      "theme": "light",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "invoices",
+      "width": 768,
+      "theme": "light",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "jobs",
+      "width": 768,
+      "theme": "dark",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "revenue-summary",
+      "width": 768,
+      "theme": "dark",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "maintenance",
+      "width": 768,
+      "theme": "dark",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "invoices",
+      "width": 768,
+      "theme": "dark",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "jobs",
+      "width": 390,
+      "theme": "light",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "revenue-summary",
+      "width": 390,
+      "theme": "light",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "maintenance",
+      "width": 390,
+      "theme": "light",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "invoices",
+      "width": 390,
+      "theme": "light",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "jobs",
+      "width": 390,
+      "theme": "dark",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "revenue-summary",
+      "width": 390,
+      "theme": "dark",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "maintenance",
+      "width": 390,
+      "theme": "dark",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    },
+    {
+      "report": "invoices",
+      "width": 390,
+      "theme": "dark",
+      "onePrimaryHeading": true,
+      "documentOverflow": false,
+      "tableScrollRegionFocusable": true
+    }
+  ],
+  "dateValidation": true,
+  "sameDayRequest": true,
+  "adminSalespersonKeyboardSelection": true,
+  "maintenanceStatusLabel": true,
+  "pageErrors": [],
+  "consoleErrors": [],
+  "failedRequests": []
+}

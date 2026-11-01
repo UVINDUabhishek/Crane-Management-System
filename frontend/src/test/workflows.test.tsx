@@ -206,13 +206,13 @@ it('renders server revenue and restricts report options', async () => {
     ),
   );
   const user = await mount('reports', 'OPERATIONS');
-  await user.click(screen.getByRole('combobox', { name: 'Report' }));
+  await user.click(screen.getByRole('combobox', { name: 'Report Category' }));
   expect(
-    screen.queryByRole('option', { name: 'Revenue · monthly' }),
+    screen.queryByRole('option', { name: 'Revenue' }),
   ).not.toBeInTheDocument();
-  await user.click(screen.getByRole('option', { name: 'Revenue summary' }));
+  await user.click(screen.getByRole('option', { name: 'Revenue Summary' }));
   await user.click(screen.getByRole('button', { name: 'Run report' }));
-  expect(await screen.findAllByText('8,500.00')).toHaveLength(4);
+  expect(await screen.findAllByText('8,500.00')).toHaveLength(2);
 });
 
 it('filters and resets the job directory while summaries retain server totals', async () => {
@@ -292,9 +292,9 @@ it('uses named report lookups and sends the selected stable ID', async () => {
     }),
   );
   const user = await mount('reports', 'OPERATIONS');
-  await user.click(screen.getByRole('combobox', { name: 'Report' }));
+  await user.click(screen.getByRole('combobox', { name: 'Report Type' }));
   await user.click(
-    screen.getByRole('option', { name: 'Job cards · customer' }),
+    screen.getByRole('option', { name: 'Job Cards · Customer' }),
   );
   await user.click(screen.getByRole('combobox', { name: 'Customer' }));
   await user.click(

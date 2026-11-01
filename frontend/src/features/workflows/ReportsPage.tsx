@@ -1,28 +1,36 @@
 import { useState } from 'react';
 import {
+  Autocomplete,
+  Box,
   Button,
+  Card,
   MenuItem,
   Stack,
   TextField,
-  Box,
-  Card,
   Typography,
-  Autocomplete,
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../shared/api';
 import { useAuth } from '../auth/AuthProvider';
 import { PageHeader } from '../../shared/ui/Layout';
-import { DataTableShell } from '../../shared/ui/DataTableShell';
-import { EmptyState, ErrorState } from '../../shared/States';
-import { label, type Row } from './WorkflowPage';
-import { Metrics, Value, formatValue } from './presentation';
-import { reportContracts } from './reports';
+import { AccessDenied, ErrorState } from '../../shared/States';
+import { label } from './WorkflowPage';
+import { ReportResults } from './ReportResults';
+import type { ReportRow } from './reportPresentation';
+import {
+  reportContracts,
+  reportFilterErrors,
+  reportRequestUrl,
+  reportStatuses,
+  type ReportCategory,
+} from './reports';
 function RelationshipFilter({
   field,
   value,
   change,
+  error,
 }: {
+  error?: string;
   field: string;
   value: string;
   change: (value: string) => void;
@@ -42,6 +50,11 @@ function RelationshipFilter({
     <Stack spacing={1}>
       <Autocomplete
         freeSolo
+        loading={q.isFetching}
+        noOptionsText="No active records. Enter a historical record ID if needed."
+        getOptionKey={(option) =>
+          typeof option === 'string' ? option : option.id
+        }
         options={q.data ?? []}
         getOptionLabel={(option) =>
           typeof option === 'string'
@@ -64,10 +77,17 @@ function RelationshipFilter({
         renderInput={(params) => (
           <TextField
             {...params}
-            label={label(field.replace(/Id$/, ''))}
+            label={
+              field === 'salesPersonId'
+                ? 'Sales Person'
+                : label(field.replace(/Id$/, ''))
+            }
             required
-            helperText="Select an active record, or enter an ID for historical records."
-            error={!!value && !/^\d+$/.test(value)}
+            helperText={
+              error ??
+              'Select an active record, or enter an ID for historical records.'
+            }
+            error={!!error}
           />
         )}
       />
@@ -82,24 +102,48 @@ export function ReportsPage() {
   const allowed = reportContracts.filter(
     (r) => user && r.roles.includes(user.role),
   );
-  const [path, setPath] = useState(allowed[0].path);
-  const spec = allowed.find((r) => r.path === path)!;
+  const [path, setPath] = useState(allowed[0]?.path ?? '');
+  const spec = allowed.find((r) => r.path === path) ?? allowed[0];
   const [values, setValues] = useState<Record<string, string>>({});
-  const [request, setRequest] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  // An applied request is separate from draft filters. Changes discard it, never rerun it.
+  const [request, setRequest] = useState<{ path: string; url: string } | null>(
+    null,
+  );
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(5);
+  const validRequest = !!request && request.path === spec?.path;
   const q = useQuery({
-    queryKey: ['reports', request],
+    queryKey: ['reports', validRequest ? request.url : null],
     queryFn: async ({ signal }) =>
-      (await api.get<Row | Row[]>(`/reports${request}`, { signal })).data,
-    enabled: !!request,
+      (
+        await api.get<ReportRow | ReportRow[]>(`/reports${request!.url}`, {
+          signal,
+        })
+      ).data,
+    enabled: validRequest,
   });
-  const rows = q.data ? (Array.isArray(q.data) ? q.data : [q.data]) : [];
-  const keys = Array.from(new Set(rows.flatMap(Object.keys)));
-  const summary =
-    !!q.data && !Array.isArray(q.data)
-      ? Object.entries(q.data).filter(([, v]) => typeof v === 'number')
-      : [];
+  if (!spec) return <AccessDenied />;
+  const categories = Array.from(new Set(allowed.map((r) => r.category)));
+  const types = allowed.filter((r) => r.category === spec.category);
+  const errors = reportFilterErrors(spec, values, submitted);
+  const rows =
+    validRequest && q.data ? (Array.isArray(q.data) ? q.data : [q.data]) : [];
+  const resetResults = () => {
+    setRequest(null);
+    setPage(0);
+    setSubmitted(false);
+  };
+  const selectType = (next: string) => {
+    setPath(next);
+    setValues({});
+    resetResults();
+  };
+  const update = (field: string, value: string) => {
+    setValues((current) => ({ ...current, [field]: value }));
+    resetResults();
+  };
+  const jobDates = spec.path === '/job-cards';
   return (
     <Stack spacing={3}>
       <PageHeader
@@ -107,154 +151,152 @@ export function ReportsPage() {
         description="Current server reports. Revenue reflects completed invoices."
       />
       <Card sx={{ p: 2.5 }}>
-        <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
-          Report builder
-        </Typography>
         <Stack
           component="form"
+          aria-label="Report filters"
+          noValidate
           spacing={2}
           onSubmit={(e) => {
             e.preventDefault();
-            if (
-              spec.fields.some(
-                (f) => f.endsWith('Id') && !/^[1-9]\d*$/.test(values[f] ?? ''),
-              )
-            )
+            setSubmitted(true);
+            if (Object.keys(reportFilterErrors(spec, values, true)).length)
               return;
-            let url = path;
-            const params = new URLSearchParams();
-            for (const f of spec.fields) {
-              if (path.includes(`{${f}}`))
-                url = url.replace(
-                  `{${f}}`,
-                  encodeURIComponent(values[f] ?? ''),
-                );
-              else if (values[f]) params.set(f, values[f]);
-            }
             setPage(0);
-            const target = url + (params.size ? '?' + params : '');
-            setRequest(target);
-            if (target === request) void q.refetch();
+            const url = reportRequestUrl(spec, values);
+            if (validRequest && request.url === url) void q.refetch();
+            else setRequest({ path: spec.path, url });
           }}
         >
-          <TextField
-            select
-            label="Report"
-            value={path}
-            onChange={(e) => {
-              setPath(e.target.value);
-              setValues({});
-              setRequest('');
-            }}
-          >
-            {allowed.map((r) => (
-              <MenuItem key={r.path} value={r.path}>
-                {label(
-                  r.title.replace(
-                    / · (customerId|craneId|salesPersonId|status)$/g,
-                    '',
-                  ),
-                )}
-              </MenuItem>
-            ))}
-          </TextField>
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', md: 'repeat(2,minmax(0,1fr))' },
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2,minmax(0,1fr))' },
               gap: 2,
             }}
           >
-            {spec.fields.map((f) =>
-              f.endsWith('Id') ? (
-                <RelationshipFilter
-                  key={`${path}-${f}`}
-                  field={f}
-                  value={values[f] ?? ''}
-                  change={(v) => setValues({ ...values, [f]: v })}
-                />
-              ) : (
-                <TextField
-                  key={f}
-                  label={label(f)}
-                  select={f === 'status'}
-                  type={
-                    f.endsWith('Date')
-                      ? 'date'
-                      : f.endsWith('Id')
-                        ? 'number'
-                        : 'text'
-                  }
-                  required={path !== '/job-cards'}
-                  value={values[f] ?? ''}
-                  onChange={(e) =>
-                    setValues({ ...values, [f]: e.target.value })
-                  }
-                  helperText={
-                    f === 'status'
-                      ? path.startsWith('/job')
-                        ? 'PENDING, COMPLETED or CANCELED'
-                        : 'DRAFT, COMPLETED, CANCELED or REVISED'
-                      : undefined
-                  }
-                  slotProps={{
-                    inputLabel: { shrink: true },
-                    htmlInput: { min: 1 },
-                  }}
-                >
-                  {f === 'status' &&
-                    (path.startsWith('/job')
-                      ? ['PENDING', 'COMPLETED', 'CANCELED']
-                      : ['DRAFT', 'COMPLETED', 'CANCELED', 'REVISED']
-                    ).map((state) => (
-                      <MenuItem key={state} value={state}>
-                        {label(state.toLowerCase())}
-                      </MenuItem>
-                    ))}
-                </TextField>
-              ),
-            )}
+            <TextField
+              select
+              label="Report Category"
+              value={spec.category}
+              onChange={(e) =>
+                selectType(
+                  allowed.find(
+                    (r) => r.category === (e.target.value as ReportCategory),
+                  )!.path,
+                )
+              }
+            >
+              {categories.map((category) => (
+                <MenuItem key={category} value={category}>
+                  {category}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Report Type"
+              value={spec.path}
+              onChange={(e) => selectType(e.target.value)}
+            >
+              {types.map((type) => (
+                <MenuItem key={type.path} value={type.path}>
+                  {type.title}
+                </MenuItem>
+              ))}
+            </TextField>
           </Box>
-          <Button type="submit" variant="contained" disabled={q.isFetching}>
-            Run report
-          </Button>
+          {spec.fields.length > 0 && (
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  sm: 'repeat(2,minmax(0,1fr))',
+                },
+                gap: 2,
+              }}
+            >
+              {spec.fields.map((field) =>
+                field.endsWith('Id') ? (
+                  <RelationshipFilter
+                    key={`${spec.path}-${field}`}
+                    field={field}
+                    value={values[field] ?? ''}
+                    change={(v) => update(field, v)}
+                    error={errors[field]}
+                  />
+                ) : (
+                  <TextField
+                    key={`${spec.path}-${field}`}
+                    label={
+                      field === 'status'
+                        ? 'Status'
+                        : `${jobDates ? 'Job Date ' : ''}${field === 'fromDate' ? 'From' : 'To'}${jobDates ? '' : ' Date'}`
+                    }
+                    value={values[field] ?? ''}
+                    onChange={(e) => update(field, e.target.value)}
+                    select={field === 'status'}
+                    type={field === 'status' ? 'text' : 'date'}
+                    required={!jobDates}
+                    error={!!errors[field]}
+                    helperText={errors[field]}
+                    slotProps={{
+                      inputLabel: { shrink: true },
+                      htmlInput: {
+                        min: field === 'toDate' ? values.fromDate : undefined,
+                        max: field === 'fromDate' ? values.toDate : undefined,
+                      },
+                    }}
+                  >
+                    {field === 'status' &&
+                      reportStatuses(spec).map((state) => (
+                        <MenuItem key={state} value={state}>
+                          {label(state.toLowerCase())}
+                        </MenuItem>
+                      ))}
+                  </TextField>
+                ),
+              )}
+            </Box>
+          )}
+          {jobDates && (
+            <Typography variant="caption" color="text.secondary">
+              Filters job card creation dates (jobDate), not scheduled or worked
+              dates. Leave both dates empty for all records.
+            </Typography>
+          )}
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={validRequest && q.isFetching}
+            >
+              Run report
+            </Button>
+            <Button
+              disabled={!Object.values(values).some(Boolean)}
+              onClick={() => {
+                setValues({});
+                resetResults();
+              }}
+            >
+              Clear filters
+            </Button>
+          </Stack>
         </Stack>
       </Card>
-      {!q.isError && summary.length > 0 && (
-        <Metrics
-          items={summary.map(([key, value]) => ({
-            label: label(key),
-            value: formatValue(key, value),
-          }))}
-        />
-      )}
-      {q.isError ? (
+      {validRequest && q.isError ? (
         <ErrorState error={q.error} retry={() => void q.refetch()} />
       ) : (
-        <DataTableShell
-          label="Report results"
-          columns={keys.map((k) => ({
-            key: k,
-            label: label(k),
-            render: (r: Row) => <Value field={k} row={r} />,
-          }))}
-          rows={rows.slice(page * size, (page + 1) * size)}
-          rowKey={(r) => String(rows.indexOf(r))}
+        <ReportResults
+          spec={spec}
+          rows={rows}
+          loading={validRequest && q.isFetching}
+          requested={validRequest}
           page={page}
-          rowsPerPage={size}
-          count={rows.length}
-          onPageChange={setPage}
-          onRowsPerPageChange={(n) => {
-            setSize(n);
-            setPage(0);
-          }}
-          loading={q.isFetching}
-          empty={
-            <EmptyState
-              title={request ? 'No report records' : 'Choose a report'}
-              description="Select the report and run it to load current data."
-            />
-          }
+          size={size}
+          setPage={setPage}
+          setSize={setSize}
         />
       )}
     </Stack>
