@@ -8,10 +8,9 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  MenuItem,
   Stack,
-  TextField,
   Typography,
+  TextField,
 } from '@mui/material';
 import {
   directories,
@@ -22,6 +21,7 @@ import {
   Metrics,
   fieldSection,
 } from './presentation';
+import { FormInput, useFormLookups, validateRelations } from './formRelations';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, normalizeError } from '../../shared/api';
@@ -39,92 +39,15 @@ import { contracts, type Field, type Action, type Contract } from './contracts';
 export type Row = Record<string, string | number | boolean | null>;
 export const label = (key: string) =>
   key.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
-function Input({
-  field,
-  value,
-  onChange,
-  error,
-}: {
-  field: Field;
-  value: unknown;
-  onChange: (v: string) => void;
-  error?: string;
-}) {
-  const options = useQuery({
-    queryKey: ['lookups', field.lookup],
-    queryFn: async () => (await api.get<Row[]>(field.lookup!)).data,
-    enabled: !!field.lookup,
-  });
-  const items =
-    options.data
-      ?.filter(
-        (r) =>
-          field.lookup !== '/job-card' ||
-          r.status === 'PENDING' ||
-          String(r.id) === String(value),
-      )
-      .map((r) => ({
-        id: String(r.id),
-        label: String(
-          r.label ??
-            (r.jobCardNumber
-              ? `${r.jobCardNumber} · ${r.customer ?? ''}`
-              : r.id),
-        ),
-      })) ?? [];
-  const current = String(value ?? '');
-  return (
-    <Stack spacing={1}>
-      {options.isError && (
-        <ErrorState
-          error={options.error}
-          retry={() => void options.refetch()}
-        />
-      )}
-      <TextField
-        fullWidth
-        label={field.label}
-        required={field.required}
-        type={field.lookup || field.options ? 'text' : field.type}
-        select={!!(field.lookup || field.options)}
-        value={current}
-        onChange={(e) => onChange(e.target.value)}
-        error={!!error}
-        helperText={
-          error ?? (options.isFetching ? 'Loading options…' : undefined)
-        }
-        slotProps={{
-          inputLabel: { shrink: true },
-          htmlInput: { step: 'any', min: field.min },
-        }}
-      >
-        {(field.lookup || field.options) && (
-          <MenuItem value="">Select {field.label.toLowerCase()}</MenuItem>
-        )}
-        {field.options?.map((v) => (
-          <MenuItem key={v} value={v}>
-            {label(v.toLowerCase())}
-          </MenuItem>
-        ))}
-        {field.lookup && current && !items.some((i) => i.id === current) && (
-          <MenuItem value={current}>Current record #{current}</MenuItem>
-        )}
-        {items.map((o) => (
-          <MenuItem key={o.id} value={o.id}>
-            {o.label}
-          </MenuItem>
-        ))}
-      </TextField>
-    </Stack>
-  );
-}
 export function RecordForm({
   fields,
   initial = {},
   title,
   submit,
   close,
+  resource,
 }: {
+  resource?: string;
   fields: Field[];
   initial?: Row;
   title: string;
@@ -144,6 +67,12 @@ export function RecordForm({
       fields.map((f) => [f.key, initial[f.key] ?? '']),
     ),
   });
+  const lookups = useFormLookups(fields, resource);
+  const values = watch();
+  const sectionFor = (key: string) =>
+    resource === '/timesheets' && fieldSection(key) === 'Hours & pricing'
+      ? 'Hours'
+      : fieldSection(key);
   const mutation = useMutation({
     mutationFn: submit,
     onSuccess: close,
@@ -210,6 +139,12 @@ export function RecordForm({
                     ? String(v)
                     : text;
           }
+          for (const [key, message] of Object.entries(
+            validateRelations(resource, fields, values, initial, lookups),
+          )) {
+            setError(key, { message });
+            invalid = true;
+          }
           if (invalid) return;
           lock.current = true;
           try {
@@ -230,7 +165,29 @@ export function RecordForm({
             sx={{ border: 0, p: 0, m: 0 }}
           >
             {mutation.isError && <ErrorState error={mutation.error} />}{' '}
-            {Array.from(new Set(fields.map((f) => fieldSection(f.key)))).map(
+            {(resource === '/quotations' || resource === '/job-card') &&
+              !fields.some((f) => f.key === 'customerId') &&
+              initial.customerId != null && (
+                <TextField
+                  label="Customer"
+                  value={
+                    initial.customerName ?? initial.customer ?? 'Not provided'
+                  }
+                  slotProps={{ input: { readOnly: true } }}
+                  helperText="The customer cannot be changed on this existing record."
+                />
+              )}
+            {resource === '/timesheets' &&
+              !fields.some((f) => f.key === 'jobCardId') &&
+              initial.jobCardId != null && (
+                <TextField
+                  label="Job card"
+                  value={initial.jobCardNumber ?? 'Not provided'}
+                  slotProps={{ input: { readOnly: true } }}
+                  helperText="This timesheet remains linked to its original job card."
+                />
+              )}
+            {Array.from(new Set(fields.map((f) => sectionFor(f.key)))).map(
               (section) => (
                 <Box key={section} component="section">
                   <Typography
@@ -251,18 +208,44 @@ export function RecordForm({
                     }}
                   >
                     {fields
-                      .filter((f) => fieldSection(f.key) === section)
+                      .filter((f) => sectionFor(f.key) === section)
                       .map((f) => (
-                        <Input
+                        <Box
                           key={f.key}
-                          field={f}
-                          value={watch(f.key)}
-                          onChange={(v) => {
-                            setValue(f.key, v);
-                            clearErrors(f.key);
-                          }}
-                          error={errors[f.key]?.message}
-                        />
+                          sx={
+                            f.key === 'description'
+                              ? { gridColumn: '1 / -1' }
+                              : undefined
+                          }
+                        >
+                          <FormInput
+                            resource={resource}
+                            values={values}
+                            initial={initial}
+                            lookups={lookups}
+                            pending={mutation.isPending}
+                            field={f}
+                            value={watch(f.key)}
+                            onChange={(v) => {
+                              setValue(f.key, v);
+                              if (
+                                f.key === 'customerId' &&
+                                String(values.customerId) !== v
+                              ) {
+                                const quote = lookups[
+                                  '/lookups/quotations'
+                                ]?.data?.find(
+                                  (r) =>
+                                    String(r.id) === String(values.quotationId),
+                                );
+                                if (!quote || String(quote.customerId) !== v)
+                                  setValue('quotationId', '');
+                              }
+                              clearErrors();
+                            }}
+                            error={errors[f.key]?.message}
+                          />
+                        </Box>
                       ))}
                   </Box>
                 </Box>
@@ -308,6 +291,7 @@ function RecordDialog({
   if (q.data && mode !== 'view')
     return (
       <RecordForm
+        resource={contract.path}
         title={typeof mode === 'string' ? `Edit ${contract.title}` : mode.label}
         fields={typeof mode === 'string' ? contract.editFields : mode.fields!}
         initial={q.data}
@@ -651,6 +635,7 @@ export function WorkflowPage({ module }: { module: string }) {
       )}
       {create && (
         <RecordForm
+          resource={c.path}
           title={`Add ${singular[module]}`}
           fields={c.createFields}
           close={() => setCreate(false)}

@@ -31,7 +31,7 @@ class FrontendWorkflowIntegrationTest extends AbstractIntegrationTest {
                 """.formatted(customer, quotation, crane))).andExpect(status().isCreated());
         long job = jobCardRepository.findAll().getFirst().getId();
         mockMvc.perform(json(authorized(post("/api/timesheets")), """
-                {"jobCardId":%d,"dateOfWork":"2026-11-10","workedHours":5,"description":"Worked"}
+                {"jobCardId":%d,"dateOfWork":"2020-01-01","workedHours":5,"description":"Worked"}
                 """.formatted(job))).andExpect(status().isCreated());
         mockMvc.perform(authorized(patch("/api/job-card/{id}/complete", job)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("COMPLETED"));

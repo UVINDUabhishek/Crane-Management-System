@@ -64,14 +64,19 @@ class LookupIntegrationTest extends AbstractIntegrationTest {
         operator.setOperatorName("Test Operator");
         operatorRepository.save(operator);
         assertOption("cranes", crane.getId(), crane.getCraneNumber());
+        mockMvc.perform(asRole(get("/api/lookups/cranes"), "operations@test.local"))
+                .andExpect(jsonPath("$[0].type").value(crane.getType()));
         assertOption("customers", customer.getId(), customer.getCompanyName());
         assertOption("operators", operator.getId(), operator.getOperatorName());
         mockMvc.perform(asRole(get("/api/lookups/quotations"), "operations@test.local"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].length()").value(3))
+                .andExpect(jsonPath("$[0].length()").value(6))
                 .andExpect(jsonPath("$[0].id").value(quotation.getId()))
                 .andExpect(jsonPath("$[0].label").value(quotation.getQuotationNumber()))
                 .andExpect(jsonPath("$[0].customerId").value(customer.getId()))
+                .andExpect(jsonPath("$[0].type").value(quotation.getType()))
+                .andExpect(jsonPath("$[0].validFrom").value(quotation.getValidFrom().toString()))
+                .andExpect(jsonPath("$[0].validTo").value(quotation.getValidTo().toString()))
                 .andExpect(jsonPath("$[0].minRate").doesNotExist());
         customer.setActive(false); customerRepository.save(customer);
         crane.setActive(false); craneRepository.save(crane);
@@ -92,15 +97,16 @@ class LookupIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$[?(@.id == " + admin.getId() + ")].label").value("ADMIN"))
                 .andExpect(jsonPath("$[0].length()").value(2));
         mockMvc.perform(asRole(get("/api/lookups/maintenance-people"), "maintenance@test.local"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(5))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(4))
                 .andExpect(jsonPath("$[0].length()").value(2))
+                .andExpect(jsonPath("$[?(@.id == " + admin.getId() + ")]").isEmpty())
                 .andExpect(jsonPath("$[*].password").isEmpty())
                 .andExpect(jsonPath("$[*].email").isEmpty());
         sales.setActive(false); userRepository.save(sales);
         mockMvc.perform(authorized(get("/api/lookups/sales-people")))
                 .andExpect(jsonPath("$.length()").value(1));
         mockMvc.perform(authorized(get("/api/lookups/maintenance-people")))
-                .andExpect(jsonPath("$.length()").value(4));
+                .andExpect(jsonPath("$.length()").value(3));
     }
 
     @Test
@@ -165,7 +171,7 @@ class LookupIntegrationTest extends AbstractIntegrationTest {
         finance.setUsername("Alpha"); maintenance.setUsername("Zulu");
         userRepository.saveAll(List.of(admin, sales, operations, finance, maintenance));
         assertOrderedIds("sales-people", admin.getId(), sales.getId());
-        assertOrderedIds("maintenance-people", finance.getId(), admin.getId(), sales.getId(),
+        assertOrderedIds("maintenance-people", finance.getId(), sales.getId(),
                 operations.getId(), maintenance.getId());
         // Also verify name ordering for the role-filtered query, independent of insertion order.
         sales.setUsername("Alpha"); userRepository.save(sales);
@@ -195,7 +201,7 @@ class LookupIntegrationTest extends AbstractIntegrationTest {
             assertThat(lookupService.getQuotations()).hasSize(1);
             assertThat(lookupService.getOperators()).hasSize(1);
             assertThat(lookupService.getSalesPeople()).hasSize(2);
-            assertThat(lookupService.getMaintenancePeople()).hasSize(5);
+            assertThat(lookupService.getMaintenancePeople()).hasSize(4);
             assertThat(statistics.getEntityLoadCount()).isZero();
             assertThat(statistics.getEntityFetchCount()).isZero();
             assertThat(statistics.getCollectionFetchCount()).isZero();
@@ -238,7 +244,7 @@ class LookupIntegrationTest extends AbstractIntegrationTest {
     private void assertOption(String resource, Long id, String label) throws Exception {
         mockMvc.perform(authorized(get("/api/lookups/" + resource)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].length()").value(2))
+                .andExpect(jsonPath("$[0].length()").value(resource.equals("cranes") ? 3 : 2))
                 .andExpect(jsonPath("$[0].id").value(id))
                 .andExpect(jsonPath("$[0].label").value(label));
     }

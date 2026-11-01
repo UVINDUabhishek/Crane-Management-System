@@ -1,6 +1,7 @@
 package com.uvindu.crane_management_system.controller;
 
 import com.uvindu.crane_management_system.dto.LookupResponse;
+import com.uvindu.crane_management_system.dto.CraneLookupResponse;
 import com.uvindu.crane_management_system.dto.QuotationLookupResponse;
 import com.uvindu.crane_management_system.service.LookupService;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +20,7 @@ public class LookupController {
 
     @GetMapping("/cranes")
     @PreAuthorize("hasAnyRole('ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE')")
-    public List<LookupResponse> cranes() {
+    public List<CraneLookupResponse> cranes() {
         return lookupService.getCranes();
     }
 
