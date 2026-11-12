@@ -1,4 +1,4 @@
-import { Autocomplete, MenuItem, Stack, TextField } from '@mui/material';
+import { Autocomplete, Box, MenuItem, Stack, TextField } from '@mui/material';
 import { useQueries } from '@tanstack/react-query';
 import { api } from '../../shared/api';
 import { ErrorState } from '../../shared/States';
@@ -183,6 +183,8 @@ export function FormInput({
       ? relationOptions(field, lookups, values, initial).map((r) => ({
           id: String(r.id),
           label: String(r.label ?? `${r.jobCardNumber} · ${r.customer ?? ''}`),
+          reference: String(r.jobCardNumber ?? ''),
+          customer: String(r.customer ?? r.customerName ?? ''),
         }))
       : [];
   const original = String(initial[field.key] ?? '');
@@ -212,6 +214,46 @@ export function FormInput({
           isOptionEqualToValue={(a, b) => a.id === b.id}
           getOptionLabel={(o) => o.label}
           getOptionKey={(o) => o.id}
+          renderOption={(props, option) => {
+            const { key, ...rest } = props;
+            return (
+              <Box component="li" key={key} {...rest} aria-label={option.label}>
+                {field.key === 'jobCardId' &&
+                'reference' in option &&
+                'customer' in option ? (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      gap: 2,
+                      width: '100%',
+                      minWidth: 0,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Box component="span" sx={{ flexShrink: 0 }}>
+                      {String(option.reference)}
+                    </Box>
+                    <Box
+                      component="span"
+                      title={String(option.customer)}
+                      sx={{
+                        ml: 'auto',
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        color: 'text.secondary',
+                      }}
+                    >
+                      {String(option.customer)}
+                    </Box>
+                  </Box>
+                ) : (
+                  option.label
+                )}
+              </Box>
+            );
+          }}
           onChange={(_, option) => onChange(option?.id ?? '')}
           disabled={!!disabled}
           loading={query?.isFetching}

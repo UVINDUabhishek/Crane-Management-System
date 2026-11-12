@@ -112,6 +112,14 @@ export function StatCard({
         minWidth: 0,
         height: '100%',
         borderColor: accent ? 'primary.main' : 'divider',
+        transition: 'border-color 140ms ease, box-shadow 140ms ease',
+        '@media (hover: hover)': {
+          '&:hover': {
+            borderColor: 'primary.main',
+            boxShadow: '0 3px 12px rgba(8,127,120,.08)',
+          },
+        },
+        '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
       }}
     >
       <Stack

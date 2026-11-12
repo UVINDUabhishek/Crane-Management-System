@@ -424,7 +424,8 @@ export function WorkflowPage({ module }: { module: string }) {
   const fallback = useRef<HTMLButtonElement>(null);
   const restore = () =>
     requestAnimationFrame(() =>
-      (actionTrigger.current?.isConnected
+      (actionTrigger.current?.isConnected &&
+      !actionTrigger.current.matches(':disabled')
         ? actionTrigger.current
         : fallback.current
       )?.focus(),
@@ -627,10 +628,11 @@ export function WorkflowPage({ module }: { module: string }) {
                 <Button
                   ref={fallback}
                   onClick={() => {
+                    if (q.isFetching) return;
                     void q.refetch();
                     if (module === 'timesheets') void parents.refetch();
                   }}
-                  disabled={q.isFetching}
+                  aria-disabled={q.isFetching || undefined}
                 >
                   Refresh {c.title}
                 </Button>
@@ -724,13 +726,23 @@ export function WorkflowPage({ module }: { module: string }) {
                   : `Review this ${singular[module].toLowerCase()} before confirming ${confirm?.action.label.toLowerCase() ?? 'the change'}. This changes its workflow state.`
         }
         pending={mutation.isPending}
+        confirmDisabled={
+          module === 'timesheets' &&
+          (parents.isFetching || !confirm || !canChange(confirm.row))
+        }
         returnFocusRef={actionTrigger}
+        fallbackFocusRef={fallback}
         onClose={() => {
           setConfirm(null);
           restore();
         }}
         onConfirm={() => {
-          if (lock.current) return;
+          if (
+            lock.current ||
+            (module === 'timesheets' &&
+              (parents.isFetching || !confirm || !canChange(confirm.row)))
+          )
+            return;
           lock.current = true;
           void mutation
             .mutateAsync()

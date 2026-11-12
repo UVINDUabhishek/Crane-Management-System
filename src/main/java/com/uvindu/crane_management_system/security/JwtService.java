@@ -14,9 +14,6 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    // In production, keep this in application.properties or environment variables.
-    // private final String SECRET = "myverysecretkeymyverysecretkey123456";
-
     @Value("${jwt.secret}")
     private String SECRET;
 

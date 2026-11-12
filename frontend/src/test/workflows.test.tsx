@@ -943,7 +943,20 @@ it('opens revision review without mutation and preserves the versioned endpoint 
   });
 });
 
-it('confirms timesheet deletion, prevents duplicates and retains a server lifecycle conflict', async () => {
+it('restores focus when canceling deletion during parent revalidation', async () => {
+  // Keep dialog transitions deterministic in this accessibility regression.
+  // Preserve the existing viewport media queries.
+  const originalMatchMedia = window.matchMedia;
+
+  vi.stubGlobal('matchMedia', (query: string) => {
+    const result = originalMatchMedia(query);
+
+    return {
+      ...result,
+      matches: query === '(prefers-reduced-motion: reduce)' || result.matches,
+    };
+  });
+
   const { createRequestGate } = await import('./requestGate');
   const gate = createRequestGate(),
     remove = vi.fn();
@@ -988,7 +1001,9 @@ it('confirms timesheet deletion, prevents duplicates and retains a server lifecy
   );
   try {
     await parentGate.started;
-    await waitFor(() => expect(trigger).toBeDisabled());
+    await waitFor(() =>
+      expect(trigger).toHaveAttribute('aria-disabled', 'true'),
+    );
     expect(trigger).toBeInTheDocument();
     expect(
       screen.getByRole('button', {
@@ -996,18 +1011,49 @@ it('confirms timesheet deletion, prevents duplicates and retains a server lifecy
         hidden: true,
       }),
     ).toBeEnabled();
+
+    expect(
+      within(dialog).getByRole('button', { name: 'Confirm' }),
+    ).toBeDisabled();
+    // Cancel while the parent request is still pending.
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(remove).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(dialog).not.toBeInTheDocument(), {
+      timeout: 5000,
+    });
+    await waitFor(() => expect(trigger).toHaveFocus());
+    // ARIA-disabled keeps focusability, but activation must remain blocked.
+    fireEvent.click(trigger);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   } finally {
     parentGate.release();
   }
-  await waitFor(() => expect(trigger).toBeEnabled());
-  await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
-  expect(remove).not.toHaveBeenCalled();
-  await waitFor(() =>
-    expect(
-      screen.getByRole('button', { name: 'Actions for TS-1' }),
-    ).toHaveFocus(),
+});
+
+it('prevents duplicate timesheet deletion and retains the server lifecycle conflict', async () => {
+  const { createRequestGate } = await import('./requestGate');
+  const gate = createRequestGate(),
+    remove = vi.fn();
+  server.use(
+    http.get('/api/timesheets', () =>
+      HttpResponse.json([{ id: 1, jobCardId: 1, timesheetNumber: 'TS-1' }]),
+    ),
+    http.delete('/api/timesheets/1', async () => {
+      remove();
+      await gate.wait();
+      return HttpResponse.json(
+        { detail: 'Parent job is no longer pending.' },
+        { status: 409 },
+      );
+    }),
   );
-  await user.click(screen.getByRole('button', { name: 'Actions for TS-1' }));
+  const user = await mount('timesheets', 'OPERATIONS', [
+    { id: 1, status: 'PENDING' },
+  ]);
+  await user.click(
+    await screen.findByRole('button', { name: 'Actions for TS-1' }),
+  );
   await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
   await user.click(await screen.findByRole('button', { name: 'Confirm' }));
   try {
@@ -1073,3 +1119,44 @@ it('retains maintenance edits after a concurrent terminal-state conflict', async
   expect(screen.getByRole('dialog')).toBeVisible();
   expect(update).toHaveBeenCalledTimes(1);
 });
+
+it.each([
+  { source: 'jobs', target: 'timesheets', link: 'Timesheets' },
+  { source: 'timesheets', target: 'maintenance', link: 'Maintenance' },
+  { source: 'maintenance', target: 'jobs', link: 'Job cards' },
+])(
+  'isolates search and filters from $source when navigating to $target',
+  async ({ source, target, link }) => {
+    server.use(
+      http.get('/api/job-card', () =>
+        HttpResponse.json([
+          { id: 1, jobCardNumber: 'JC-1', status: 'PENDING' },
+        ]),
+      ),
+      http.get('/api/timesheets', () => HttpResponse.json([])),
+      http.get('/api/maintenance', () =>
+        HttpResponse.json([
+          { id: 1, maintenanceNumber: 'MT-1', status: 'SCHEDULED' },
+        ]),
+      ),
+    );
+    const user = await mount(source);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search records' }), {
+      target: { value: 'unique source search' },
+    });
+    if (source !== 'timesheets')
+      await user.click(
+        screen.getByRole('button', {
+          name: source === 'jobs' ? 'Pending' : 'Scheduled',
+        }),
+      );
+    await user.click(screen.getByRole('link', { name: link }));
+    expect(
+      await screen.findByRole('textbox', { name: 'Search records' }),
+    ).toHaveValue('');
+    if (target !== 'timesheets')
+      expect(screen.getByRole('button', { name: 'All statuses' })).toHaveClass(
+        'MuiChip-filled',
+      );
+  },
+);

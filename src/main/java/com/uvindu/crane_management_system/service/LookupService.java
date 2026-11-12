@@ -15,6 +15,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class LookupService {
+
     private final CraneRepository craneRepository;
     private final CustomerRepository customerRepository;
     private final QuotationRepository quotationRepository;

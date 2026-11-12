@@ -34,12 +34,18 @@ export function RowActions({
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const queued = useRef<RowAction | null>(null);
   const trigger = useRef<HTMLElement | null>(null);
+  const eligibility = useRef({ disabled, changesDisabled, actions });
+  eligibility.current = { disabled, changesDisabled, actions };
   const reduced = useMediaQuery('(prefers-reduced-motion: reduce)');
   return (
     <Stack
-      direction="row"
-      spacing={0.5}
-      sx={{ justifyContent: 'flex-end', whiteSpace: 'nowrap' }}
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 44px)',
+        gap: 0.5,
+        whiteSpace: 'nowrap',
+        '& > :nth-of-type(1)': { gridColumn: 1 },
+      }}
     >
       <Tooltip title="View details">
         <span>
@@ -53,31 +59,54 @@ export function RowActions({
           </IconButton>
         </span>
       </Tooltip>
-      {edit && (
-        <Tooltip title="Edit">
+      {edit ? (
+        <Tooltip title={changesDisabled ? 'Checking job status…' : 'Edit'}>
           <span>
             <IconButton
-              disabled={disabled || changesDisabled}
+              disabled={disabled}
+              aria-disabled={changesDisabled || undefined}
               aria-label={`Edit ${reference}`}
-              sx={{ width: 44, height: 44 }}
-              onClick={(e) => edit(e.currentTarget)}
+              sx={{
+                width: 44,
+                height: 44,
+                ...(changesDisabled && {
+                  color: 'action.disabled',
+                  cursor: 'not-allowed',
+                }),
+              }}
+              onClick={(e) => {
+                if (!changesDisabled) edit(e.currentTarget);
+              }}
             >
               <EditOutlined fontSize="small" />
             </IconButton>
           </span>
         </Tooltip>
+      ) : (
+        <span aria-hidden="true" />
       )}
       {actions.length > 0 && (
-        <Tooltip title="More actions">
+        <Tooltip
+          title={changesDisabled ? 'Checking job status…' : 'More actions'}
+        >
           <span>
             <IconButton
-              disabled={disabled || changesDisabled}
+              disabled={disabled}
+              aria-disabled={changesDisabled || undefined}
               aria-label={`Actions for ${reference}`}
               aria-haspopup="menu"
               aria-expanded={!!anchor}
               aria-controls={anchor ? id : undefined}
-              sx={{ width: 44, height: 44 }}
+              sx={{
+                width: 44,
+                height: 44,
+                ...(changesDisabled && {
+                  color: 'action.disabled',
+                  cursor: 'not-allowed',
+                }),
+              }}
               onClick={(e) => {
+                if (changesDisabled) return;
                 trigger.current = e.currentTarget;
                 setAnchor(e.currentTarget);
               }}
@@ -98,7 +127,16 @@ export function RowActions({
             onExited: () => {
               const action = queued.current;
               queued.current = null;
-              if (action && trigger.current) {
+              if (
+                action &&
+                trigger.current?.isConnected &&
+                !eligibility.current.disabled &&
+                !eligibility.current.changesDisabled &&
+                eligibility.current.actions.some(
+                  (current) =>
+                    current.label === action.label && !current.disabled,
+                )
+              ) {
                 trigger.current.focus();
                 action.run(trigger.current);
               }

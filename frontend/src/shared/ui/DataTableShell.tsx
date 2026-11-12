@@ -78,7 +78,12 @@ export function DataTableShell<T>({
                   component="th"
                   scope="col"
                   key={c.key}
-                  align={c.align}
+                  align={c.key === 'actions' ? 'left' : c.align}
+                  sx={
+                    c.key === 'actions'
+                      ? { width: 172, minWidth: 172 }
+                      : undefined
+                  }
                 >
                   {c.label}
                 </TableCell>
@@ -189,8 +194,10 @@ export function ConfirmDialog({
   description,
   confirmLabel = 'Confirm',
   pending = false,
+  confirmDisabled = false,
   pendingLabel = 'Working…',
   returnFocusRef,
+  fallbackFocusRef,
   feedback,
   onConfirm,
   onClose,
@@ -200,8 +207,10 @@ export function ConfirmDialog({
   description: string;
   confirmLabel?: string;
   pending?: boolean;
+  confirmDisabled?: boolean;
   pendingLabel?: string;
   returnFocusRef?: RefObject<HTMLElement | null>;
+  fallbackFocusRef?: RefObject<HTMLElement | null>;
   feedback?: ReactNode;
   onConfirm: () => void;
   onClose: () => void;
@@ -223,8 +232,10 @@ export function ConfirmDialog({
             if (!pending) cancelRef.current?.focus();
           },
           onExited: () => {
-            if (returnFocusRef?.current?.isConnected)
-              returnFocusRef.current.focus();
+            const target = returnFocusRef?.current;
+            if (target?.isConnected && !target.matches(':disabled'))
+              target.focus();
+            else fallbackFocusRef?.current?.focus();
           },
         },
         paper: { 'aria-busy': pending },
@@ -245,7 +256,11 @@ export function ConfirmDialog({
         <Button ref={cancelRef} autoFocus disabled={pending} onClick={onClose}>
           Cancel
         </Button>
-        <Button variant="contained" disabled={pending} onClick={onConfirm}>
+        <Button
+          variant="contained"
+          disabled={pending || confirmDisabled}
+          onClick={onConfirm}
+        >
           {pending ? pendingLabel : confirmLabel}
         </Button>
       </DialogActions>

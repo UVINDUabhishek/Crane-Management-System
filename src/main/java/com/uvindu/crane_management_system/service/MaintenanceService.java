@@ -137,6 +137,7 @@ public class MaintenanceService {
         SchedulingService.validateDates(request.getMaintenanceStartDate(), request.getMaintenanceEndDate());
         Long previousCraneId = maintenance.getCrane().getId();
         schedulingService.lockCranes(previousCraneId, request.getCraneId());
+
         if (maintenance.getStatus() == MaintenanceStatus.SCHEDULED
                 || maintenance.getStatus() == MaintenanceStatus.IN_PROGRESS) {
             schedulingService.rejectBookingConflict(request.getCraneId(), request.getMaintenanceStartDate(),

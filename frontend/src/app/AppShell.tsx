@@ -25,7 +25,7 @@ import Menu from '@mui/icons-material/Menu';
 import Close from '@mui/icons-material/Close';
 import DarkModeOutlined from '@mui/icons-material/DarkModeOutlined';
 import LightModeOutlined from '@mui/icons-material/LightModeOutlined';
-import PrecisionManufacturingOutlined from '@mui/icons-material/PrecisionManufacturingOutlined';
+import { BrandMark } from '../shared/ui/BrandMark';
 import DashboardOutlined from '@mui/icons-material/DashboardOutlined';
 import ConstructionOutlined from '@mui/icons-material/ConstructionOutlined';
 import PeopleOutline from '@mui/icons-material/PeopleOutline';
@@ -100,7 +100,7 @@ export function AppShell({
             color: 'navigation.accent',
           }}
         >
-          <PrecisionManufacturingOutlined />
+          <BrandMark />
         </Box>
         <Box sx={{ flex: 1 }}>
           <Typography
@@ -205,20 +205,6 @@ export function AppShell({
             </Box>
           ) : null;
         })}
-      </Box>
-      <Box
-        sx={{ m: 2, p: 2, borderRadius: '8px', bgcolor: 'navigation.hover' }}
-      >
-        <Typography variant="caption" fontWeight={700}>
-          One workspace. Clear oversight.
-        </Typography>
-        <Typography
-          variant="caption"
-          display="block"
-          sx={{ color: 'navigation.muted', mt: 0.5 }}
-        >
-          Fleet · People · Operations
-        </Typography>
       </Box>
     </Stack>
   );

@@ -1,0 +1,76 @@
+{
+  "checks": 45,
+  "passed": 45,
+  "results": [
+    {
+      "role": "ADMIN",
+      "statuses": {
+        "/dashboard": 200,
+        "/cranes": 200,
+        "/customers": 200,
+        "/quotations": 200,
+        "/job-card": 200,
+        "/timesheets": 200,
+        "/maintenance": 200,
+        "/invoices": 200,
+        "/admin/users": 200
+      }
+    },
+    {
+      "role": "SALES",
+      "statuses": {
+        "/dashboard": 200,
+        "/cranes": 200,
+        "/customers": 200,
+        "/quotations": 200,
+        "/job-card": 200,
+        "/timesheets": 403,
+        "/maintenance": 403,
+        "/invoices": 403,
+        "/admin/users": 403
+      }
+    },
+    {
+      "role": "OPERATIONS",
+      "statuses": {
+        "/dashboard": 200,
+        "/cranes": 403,
+        "/customers": 200,
+        "/quotations": 403,
+        "/job-card": 200,
+        "/timesheets": 200,
+        "/maintenance": 200,
+        "/invoices": 403,
+        "/admin/users": 403
+      }
+    },
+    {
+      "role": "FINANCE",
+      "statuses": {
+        "/dashboard": 200,
+        "/cranes": 403,
+        "/customers": 403,
+        "/quotations": 403,
+        "/job-card": 403,
+        "/timesheets": 403,
+        "/maintenance": 403,
+        "/invoices": 200,
+        "/admin/users": 403
+      }
+    },
+    {
+      "role": "MAINTENANCE",
+      "statuses": {
+        "/dashboard": 200,
+        "/cranes": 403,
+        "/customers": 403,
+        "/quotations": 403,
+        "/job-card": 403,
+        "/timesheets": 403,
+        "/maintenance": 200,
+        "/invoices": 403,
+        "/admin/users": 403
+      }
+    }
+  ]
+}

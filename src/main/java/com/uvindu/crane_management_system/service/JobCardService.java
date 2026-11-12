@@ -343,6 +343,7 @@ public class JobCardService {
 
     private void validateQuotation(Customer customer, Quotation quotation, Crane crane,
                                    LocalDate start, LocalDate end) {
+
         if (!customer.isActive() || !quotation.isActive() || !crane.isActive()) {
             throw BusinessException.conflict("Customer, quotation and crane must be active");
         }

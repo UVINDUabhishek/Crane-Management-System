@@ -3,10 +3,15 @@ import type { CraneResponse } from './cranesApi';
 const required = z.string().trim().min(1, 'This field is required.');
 export const craneSchema = z.object({
   type: required,
-  capacity: z.number().positive('Capacity must be greater than 0.'),
+  capacity: z
+    .number({ error: 'Enter a valid capacity.' })
+    .positive('Capacity must be greater than 0.'),
   manufacturer: required,
   serialNumber: required,
-  year: z.number().int().positive('Year must be greater than 0.'),
+  year: z
+    .number({ error: 'Enter a valid year.' })
+    .int('Year must be a whole number.')
+    .positive('Year must be greater than 0.'),
   location: required,
 });
 export type CraneValues = z.infer<typeof craneSchema>;

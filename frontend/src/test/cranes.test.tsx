@@ -487,3 +487,24 @@ it('keeps specifications in details while removing directory columns and numeric
   expect(within(dialog).queryByText('ID')).not.toBeInTheDocument();
   expect(within(dialog).queryByText('42')).not.toBeInTheDocument();
 });
+
+it.each([
+  ['capacity', NaN, 'Enter a valid capacity.'],
+  ['year', NaN, 'Enter a valid year.'],
+  ['year', 2026.5, 'Year must be a whole number.'],
+])(
+  'shows actionable validation for invalid %s (%s)',
+  (field, value, message) => {
+    const result = craneSchema.safeParse({
+      ...formDefaults(crane),
+      [field]: value,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success)
+      expect(result.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: [field], message }),
+        ]),
+      );
+  },
+);

@@ -27,6 +27,7 @@ public class SchedulingService {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void lockCranes(Long... ids) {
+
         // Existing job/maintenance row first, then distinct crane IDs in ascending order.
         Arrays.stream(ids).distinct().sorted().forEach(id -> {
             Crane crane = cranes.findByIdForUpdate(id)
@@ -38,6 +39,7 @@ public class SchedulingService {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void rejectBookingConflict(Long craneId, LocalDate start, LocalDate end, Long excludeId) {
+
         if (jobs.existsBookingConflict(craneId, start, end, excludeId, JobCardStatus.PENDING)) {
             throw new BusinessException(HttpStatus.CONFLICT, "BOOKING_OVERLAP",
                     "Crane has a pending job during the selected period");
@@ -45,6 +47,7 @@ public class SchedulingService {
     }
 
     public static void validateDates(LocalDate start, LocalDate end) {
+
         if (start == null || (end != null && end.isBefore(start))) {
             throw BusinessException.invalid("Start date is required and end date cannot be before start date");
         }

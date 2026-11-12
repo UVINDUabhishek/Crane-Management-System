@@ -64,7 +64,7 @@ export function AppRoutes({
                     ) : m.key === 'users' ? (
                       <UsersPage />
                     ) : (
-                      <WorkflowPage module={m.key} />
+                      <WorkflowPage key={m.key} module={m.key} />
                     )}
                   </Protected>
                 }

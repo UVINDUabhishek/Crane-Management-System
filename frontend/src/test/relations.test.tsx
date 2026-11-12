@@ -481,3 +481,16 @@ it('shows the immutable timesheet job on edit and submits only update fields', a
   );
   expect(submit).toHaveBeenCalledTimes(1);
 });
+
+it('renders timesheet job references and customer names in separate option columns', async () => {
+  const { user } = mount('timesheets');
+  await user.click(screen.getByRole('combobox', { name: /Job card/ }));
+  const option = await screen.findByRole('option', {
+    name: /JC-pending.*Atlas/,
+  });
+  expect(option.querySelector('[title="Atlas"]')).toHaveTextContent('Atlas');
+  expect(option).toHaveTextContent('JC-pending');
+  expect(
+    screen.queryByRole('option', { name: /JC-complete/ }),
+  ).not.toBeInTheDocument();
+});

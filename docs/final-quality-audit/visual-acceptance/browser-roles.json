@@ -1,0 +1,55 @@
+[
+  {
+    "role": "SALES",
+    "links": [
+      "Overview",
+      "Reports",
+      "Cranes",
+      "Job cards",
+      "Customers",
+      "Quotations"
+    ]
+  },
+  {
+    "role": "OPERATIONS",
+    "links": [
+      "Overview",
+      "Reports",
+      "Job cards",
+      "Timesheets",
+      "Maintenance",
+      "Customers"
+    ]
+  },
+  {
+    "role": "FINANCE",
+    "links": [
+      "Overview",
+      "Reports",
+      "Invoices"
+    ]
+  },
+  {
+    "role": "MAINTENANCE",
+    "links": [
+      "Overview",
+      "Reports",
+      "Maintenance"
+    ]
+  },
+  {
+    "role": "ADMIN",
+    "links": [
+      "Overview",
+      "Reports",
+      "Cranes",
+      "Job cards",
+      "Timesheets",
+      "Maintenance",
+      "Customers",
+      "Quotations",
+      "Invoices",
+      "Users"
+    ]
+  }
+]

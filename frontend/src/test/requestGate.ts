@@ -1,18 +1,31 @@
+import { waitFor } from '@testing-library/react';
+const pending = new Set<() => void>();
+export function releaseRequestGates() {
+  for (const release of pending) release();
+}
 /** Hold an MSW response until pending-state assertions finish. Release in finally. */
 export function createRequestGate() {
   let release!: () => void;
-  let markStarted!: () => void;
+  let hasStarted = false;
   const response = new Promise<void>((resolve) => {
-    release = resolve;
+    release = () => {
+      pending.delete(release);
+      resolve();
+    };
   });
-  const started = new Promise<void>((resolve) => {
-    markStarted = resolve;
-  });
+  pending.add(release);
+
   return {
-    started,
+    // Bounded, lazy expectation: a missing handler fails at the request boundary.
+    get started() {
+      return waitFor(() => {
+        if (!hasStarted)
+          throw new Error('Controlled request did not reach its handler');
+      });
+    },
     release,
     wait: () => {
-      markStarted();
+      hasStarted = true;
       return response;
     },
   };
