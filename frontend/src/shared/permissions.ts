@@ -9,6 +9,7 @@ export type Role = (typeof roles)[number];
 // Full-record read permissions from controller annotations, NOT lookup permissions.
 export const permissions = {
   dashboard: roles,
+  reports: roles,
   cranes: ['ADMIN', 'SALES'],
   customers: ['ADMIN', 'SALES', 'OPERATIONS'],
   quotations: ['ADMIN', 'SALES'],
@@ -31,6 +32,7 @@ export const modules: { key: Permission; label: string }[] = [
   { key: 'maintenance', label: 'Maintenance' },
   { key: 'invoices', label: 'Invoices' },
   { key: 'users', label: 'Users' },
+  { key: 'reports', label: 'Reports' },
 ];
 
 export const canWriteCustomers = (role: Role) =>

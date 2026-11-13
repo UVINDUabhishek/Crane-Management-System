@@ -3,9 +3,11 @@ import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import { setupServer } from 'msw/node';
 import { session } from '../shared/api';
+import { releaseRequestGates } from './requestGate';
 export const server = setupServer();
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => {
+  releaseRequestGates();
   cleanup();
   server.resetHandlers();
   session.set(null);

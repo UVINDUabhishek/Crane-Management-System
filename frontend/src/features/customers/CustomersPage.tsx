@@ -1,17 +1,7 @@
+import { RowActions } from '../../shared/ui/RowActions';
 import { ActivationControl } from '../../shared/ui/ActivationControl';
 import { useRef, useState } from 'react';
-import {
-  Alert,
-  Button,
-  Chip,
-  IconButton,
-  Menu,
-  MenuItem,
-  Snackbar,
-  Stack,
-  useMediaQuery,
-} from '@mui/material';
-import MoreHoriz from '@mui/icons-material/MoreHoriz';
+import { Alert, Button, Chip, Snackbar, Stack } from '@mui/material';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthProvider';
@@ -43,21 +33,15 @@ export function CustomersPage() {
   const { user } = useAuth(),
     cache = useQueryClient();
   const write = !!user && canWriteCustomers(user.role);
-  const reduced = useMediaQuery('(prefers-reduced-motion: reduce)');
   const [status, setStatus] = useState('All');
   const [search, setSearch] = useState(''),
     [emailOnly, setEmailOnly] = useState(false),
     [page, setPage] = useState(0),
     [size, setSize] = useState(5);
-  const [menu, setMenu] = useState<{
-      anchor: HTMLElement;
-      customer: CustomerResponse;
-    } | null>(null),
-    [selection, setSelection] = useState<Selection | null>(null),
+  const [selection, setSelection] = useState<Selection | null>(null),
     [create, setCreate] = useState(false),
     [notice, setNotice] = useState('');
-  const queued = useRef<Selection | null>(null),
-    trigger = useRef<HTMLElement | null>(null),
+  const trigger = useRef<HTMLElement | null>(null),
     fallback = useRef<HTMLButtonElement>(null),
     lock = useRef(false);
   const query = useQuery({
@@ -129,50 +113,46 @@ export function CustomersPage() {
         />
       ),
     },
-    ...(
-      [
-        'companyName',
-        'registrationNo',
-        'vatNo',
-        'contactPerson',
-        'contactNo',
-      ] as const
-    ).map((key, index) => ({
-      key,
-      label: [
-        'Company name',
-        'Registration number',
-        'VAT number',
-        'Contact person',
-        'Contact number',
-      ][index],
-      render: (c: CustomerResponse) => c[key] || '—',
-    })),
+    ...(['companyName', 'vatNo', 'contactPerson', 'contactNo'] as const).map(
+      (key, index) => ({
+        key,
+        label: [
+          'Company name',
+          'VAT number',
+          'Contact person',
+          'Contact number',
+        ][index],
+        render: (c: CustomerResponse) => c[key] || '—',
+      }),
+    ),
     {
       key: 'actions',
       label: 'Actions',
       align: 'right',
       render: (c) => (
-        <IconButton
-          aria-label={`Actions for ${c.companyName}`}
-          aria-haspopup="menu"
-          aria-expanded={menu?.customer.id === c.id}
-          onClick={(e) => {
-            trigger.current = e.currentTarget;
-            setMenu({ anchor: e.currentTarget, customer: c });
+        <RowActions
+          reference={c.companyName}
+          disabled={deactivate.isPending}
+          view={(element) => {
+            trigger.current = element;
+            setSelection({ kind: 'view', customer: c });
           }}
-        >
-          <MoreHoriz />
-        </IconButton>
+          edit={
+            write
+              ? (element) => {
+                  trigger.current = element;
+                  setSelection({ kind: 'edit', customer: c });
+                }
+              : undefined
+          }
+        />
       ),
     },
   ];
   return (
     <Stack spacing={3}>
       <PageHeader
-        eyebrow="RELATIONSHIPS"
         title="Customers"
-        description="Company details, billing addresses and contacts in one place."
         actions={
           write ? (
             <Button
@@ -188,14 +168,6 @@ export function CustomersPage() {
           ) : undefined
         }
       />
-      <Button
-        ref={fallback}
-        sx={{ alignSelf: 'flex-start' }}
-        onClick={() => void query.refetch()}
-        disabled={query.isFetching}
-      >
-        Refresh customers
-      </Button>
       {query.isError ? (
         <ErrorState error={query.error} retry={() => void query.refetch()} />
       ) : (
@@ -204,6 +176,7 @@ export function CustomersPage() {
           columns={columns}
           rows={rows.slice(currentPage * size, (currentPage + 1) * size)}
           rowKey={(c) => String(c.id)}
+          isInactive={(c) => !c.active}
           loading={query.isPending}
           loadingLabel="Loading customers…"
           page={currentPage}
@@ -223,14 +196,23 @@ export function CustomersPage() {
                   : 'Loading directory'
               }
             >
-              <SearchField
-                label="Search customers"
-                value={search}
-                onChange={(v) => {
-                  setSearch(v);
-                  setPage(0);
-                }}
-              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <SearchField
+                  label="Search customers"
+                  value={search}
+                  onChange={(v) => {
+                    setSearch(v);
+                    setPage(0);
+                  }}
+                />
+                <Button
+                  ref={fallback}
+                  onClick={() => void query.refetch()}
+                  disabled={query.isFetching}
+                >
+                  Refresh customers
+                </Button>
+              </Stack>
             </TableToolbar>
           }
           filters={
@@ -284,41 +266,7 @@ export function CustomersPage() {
           }
         />
       )}
-      <Menu
-        anchorEl={menu?.anchor}
-        open={!!menu}
-        onClose={() => setMenu(null)}
-        transitionDuration={reduced ? 0 : undefined}
-        slotProps={{
-          transition: {
-            onExited: () => {
-              if (queued.current) {
-                setSelection(queued.current);
-                queued.current = null;
-              }
-            },
-          },
-        }}
-      >
-        {(['view', ...(write ? (['edit'] as const) : [])] as const).map(
-          (kind) => (
-            <MenuItem
-              key={kind}
-              onClick={() => {
-                if (menu) queued.current = { kind, customer: menu.customer };
-                deactivate.reset();
-                setMenu(null);
-              }}
-            >
-              {kind === 'view'
-                ? 'View details'
-                : kind === 'edit'
-                  ? 'Edit'
-                  : 'Deactivate'}
-            </MenuItem>
-          ),
-        )}
-      </Menu>
+
       {create && write && (
         <CustomerFormDialog onClose={close} onSaved={saved} />
       )}

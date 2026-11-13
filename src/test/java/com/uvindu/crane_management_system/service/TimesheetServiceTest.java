@@ -39,6 +39,22 @@ class TimesheetServiceTest extends BaseUnitTest {
     private TimesheetService timesheetService;
 
     @Test
+    void rejectsFutureDatesBeforeSavingForCreateAndUpdate() {
+        JobCard job = TimesheetTestDataBuilder.createPendingJobCard(1L);
+        when(jobCardRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(job));
+        CreateTimesheetRequest create = TimesheetTestDataBuilder.createTimesheetRequest(1L);
+        create.setDateOfWork(LocalDate.now(java.time.ZoneId.of("Asia/Colombo")).plusDays(1));
+        assertThatThrownBy(() -> timesheetService.createTimesheet(create)).hasMessageContaining("later than today");
+        Timesheet sheet = TimesheetTestDataBuilder.createTimesheet(1L, "TS-0001", job);
+        when(timesheetRepository.findJobCardIdById(1L)).thenReturn(Optional.of(1L));
+        when(timesheetRepository.findById(1L)).thenReturn(Optional.of(sheet));
+        UpdateTimesheetRequest update = new UpdateTimesheetRequest();
+        update.setDateOfWork(create.getDateOfWork());
+        assertThatThrownBy(() -> timesheetService.updateTimesheet(1L, update)).hasMessageContaining("later than today");
+        verify(timesheetRepository, never()).save(any());
+    }
+
+    @Test
     void shouldCreateTimesheetSuccessfully() {
         // Arrange
         JobCard jobCard = TimesheetTestDataBuilder.createPendingJobCard(1L);
@@ -230,7 +246,7 @@ class TimesheetServiceTest extends BaseUnitTest {
         UpdateTimesheetRequest request = TimesheetTestDataBuilder.createUpdateTimesheetRequest();
 
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(timesheet));
-        when(timesheetRepository.findByJobCardAndDateOfWork(jobCard, LocalDate.now().plusDays(1)))
+        when(timesheetRepository.findByJobCardAndDateOfWork(jobCard, LocalDate.now().minusDays(1)))
                 .thenReturn(Optional.empty());
         when(timesheetRepository.save(any(Timesheet.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -295,7 +311,7 @@ class TimesheetServiceTest extends BaseUnitTest {
         UpdateTimesheetRequest request = TimesheetTestDataBuilder.createUpdateTimesheetRequest();
 
         when(timesheetRepository.findById(1L)).thenReturn(Optional.of(timesheet));
-        when(timesheetRepository.findByJobCardAndDateOfWork(jobCard, LocalDate.now().plusDays(1)))
+        when(timesheetRepository.findByJobCardAndDateOfWork(jobCard, LocalDate.now().minusDays(1)))
                 .thenReturn(Optional.of(existingTimesheet));
 
         when(timesheetRepository.findJobCardIdById(1L)).thenReturn(Optional.of(timesheet.getJobCard().getId()));
@@ -337,7 +353,7 @@ class TimesheetServiceTest extends BaseUnitTest {
 
         when(timesheetRepository.findByJobCardAndDateOfWork(
                 jobCard,
-                LocalDate.now().plusDays(1)))
+                LocalDate.now().minusDays(1)))
                 .thenReturn(Optional.of(timesheet));
 
         when(timesheetRepository.save(any(Timesheet.class)))
@@ -354,7 +370,7 @@ class TimesheetServiceTest extends BaseUnitTest {
         // Assert
         assertThat(response).isNotNull();
         assertThat(timesheet.getDateOfWork())
-                .isEqualTo(LocalDate.now().plusDays(1));
+                .isEqualTo(LocalDate.now().minusDays(1));
 
         verify(timesheetRepository).save(timesheet);
     }

@@ -59,7 +59,7 @@ class FrontendContractIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.salesPersonId").value(salespersonId));
 
         String sheetBody = """
-                {"jobCardId":%d,"dateOfWork":"2026-11-10","workedHours":5,"description":"Contract timesheet"}
+                {"jobCardId":%d,"dateOfWork":"2020-01-01","workedHours":5,"description":"Contract timesheet"}
                 """.formatted(jobId);
         String sheetResponse = mockMvc.perform(json(asRole(post("/api/timesheets"), "operations@test.local"), sheetBody))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.jobCardId").value(jobId))

@@ -99,7 +99,7 @@ public final class IntegrationTestDataFactory {
 
     public Timesheet fixtureTimesheet(JobCard job) throws Exception {
         String body = """
-                {"jobCardId":%d,"dateOfWork":"2026-11-10",
+                {"jobCardId":%d,"dateOfWork":"2020-01-01",
                  "workedHours":5,"description":"Day one"}
                 """.formatted(job.getId());
         mvc.perform(post("/api/timesheets")

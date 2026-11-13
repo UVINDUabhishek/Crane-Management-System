@@ -1,0 +1,5 @@
+# Generated artifacts and local caches
+node_modules/
+dist/
+coverage/
+.vite/

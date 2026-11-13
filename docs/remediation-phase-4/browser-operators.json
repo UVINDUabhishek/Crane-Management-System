@@ -1,0 +1,15 @@
+{
+  "mode": "Synthetic API fixtures, not live backend acceptance",
+  "checks": [
+    {
+      "module": "Operators",
+      "width": 390,
+      "dark": true,
+      "detailsFocus": true,
+      "deleteConfirmation": true,
+      "cancelFocus": true
+    }
+  ],
+  "pageAndConsoleErrors": [],
+  "unintendedMutations": []
+}

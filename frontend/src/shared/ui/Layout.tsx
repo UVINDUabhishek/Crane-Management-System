@@ -8,7 +8,7 @@ export function PageHeader({
   breadcrumbs,
 }: {
   title: string;
-  description: string;
+  description?: string;
   eyebrow?: string;
   actions?: ReactNode;
   breadcrumbs?: ReactNode;
@@ -27,16 +27,22 @@ export function PageHeader({
               {eyebrow}
             </Typography>
           )}
-          <Typography variant="h4" component="h1" sx={{ mt: 0.5 }}>
+          <Typography
+            variant="h5"
+            component="h1"
+            sx={{ fontSize: { xs: '1.35rem', md: '1.55rem' } }}
+          >
             {title}
           </Typography>
-          <Typography
-            color="text.secondary"
-            variant="body2"
-            sx={{ mt: 1, maxWidth: 680 }}
-          >
-            {description}
-          </Typography>
+          {description && (
+            <Typography
+              color="text.secondary"
+              variant="body2"
+              sx={{ mt: 1, maxWidth: 680 }}
+            >
+              {description}
+            </Typography>
+          )}
         </Box>
         {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
       </Stack>
@@ -106,6 +112,14 @@ export function StatCard({
         minWidth: 0,
         height: '100%',
         borderColor: accent ? 'primary.main' : 'divider',
+        transition: 'border-color 140ms ease, box-shadow 140ms ease',
+        '@media (hover: hover)': {
+          '&:hover': {
+            borderColor: 'primary.main',
+            boxShadow: '0 3px 12px rgba(8,127,120,.08)',
+          },
+        },
+        '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
       }}
     >
       <Stack

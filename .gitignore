@@ -57,3 +57,30 @@ frontend/coverage/
 
 # Local project bundling script (review separately)
 /bundle_project.py
+
+# Local diagnostic logs
+/context-error.log
+
+# Diagnostics, editor leftovers and disposable working files
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+*.hprof
+/tmp/
+/temp/
+
+# Local credential material (application configuration uses environment variables)
+credentials.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+.aws/
+
+# Local task instructions; keep the concise reports and sanitized evidence in docs/
+/CHMS_Final_Quality_Audit.md

@@ -1,7 +1,13 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import {
+  render,
+  screen,
+  within,
+  waitFor,
+  fireEvent,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { http, HttpResponse, delay } from 'msw';
+import { http, HttpResponse } from 'msw';
 import { ThemeProvider } from '@mui/material';
 import { MemoryRouter, Link } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -9,6 +15,7 @@ import { AppRoutes, createQueryClient } from '../app/App';
 import { createAppTheme } from '../app/theme';
 import { AuthProvider } from '../features/auth/AuthProvider';
 import { server } from './setup';
+import { createRequestGate } from './requestGate';
 import {
   customerSchema,
   customerFields,
@@ -82,8 +89,13 @@ async function mount(role: Role = 'ADMIN') {
     </ThemeProvider>,
   );
   const user = userEvent.setup();
-  await user.type(screen.getByLabelText('Email address'), 'alex@example.com');
-  await user.type(screen.getByLabelText('Password'), 'password');
+  // Exercise real authentication, without replaying every setup keystroke.
+  fireEvent.change(screen.getByLabelText('Email address'), {
+    target: { value: 'alex@example.com' },
+  });
+  fireEvent.change(screen.getByLabelText('Password'), {
+    target: { value: 'password' },
+  });
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
   await screen.findByRole('heading', { name: 'Operations at a glance' });
   await user.click(screen.getByRole('link', { name: 'Direct customer route' }));
@@ -99,23 +111,26 @@ async function action(user: ReturnType<typeof userEvent.setup>, name: string) {
     return await screen.findByRole('dialog');
   }
   await user.click(
-    await screen.findByRole('button', { name: 'Actions for Atlas Lifting' }),
+    await screen.findByRole('button', {
+      name:
+        name === 'Edit'
+          ? 'Edit Atlas Lifting'
+          : 'View details for Atlas Lifting',
+    }),
   );
-  await user.click(screen.getByRole('menuitem', { name }));
   return await screen.findByRole('dialog');
 }
-async function fill(user: ReturnType<typeof userEvent.setup>) {
+function fill() {
   for (const [key, label] of Object.entries(customerFields)) {
-    await user.type(
-      screen.getByLabelText(label, { exact: false }),
-      String(customer[key as keyof CustomerResponse]),
-    );
+    fireEvent.change(screen.getByLabelText(label, { exact: false }), {
+      target: { value: String(customer[key as keyof CustomerResponse]) },
+    });
   }
 }
 it.each(['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[])(
   'enforces customer access for %s',
   async (role) => {
-    const user = await mount(role);
+    await mount(role);
     if (role === 'FINANCE' || role === 'MAINTENANCE') {
       expect(await screen.findByText('Access denied')).toBeVisible();
       expect(listRequests).toBe(0);
@@ -128,15 +143,12 @@ it.each(['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'MAINTENANCE'] as Role[])(
     expect(
       screen.queryByRole('button', { name: 'Add customer' }) !== null,
     ).toBe(role !== 'OPERATIONS');
-    await user.click(
-      screen.getByRole('button', { name: 'Actions for Atlas Lifting' }),
-    );
     expect(
-      screen.getByRole('menuitem', { name: 'View details' }),
+      screen.getByRole('button', { name: 'View details for Atlas Lifting' }),
     ).toBeVisible();
-    expect(screen.queryByRole('menuitem', { name: 'Edit' }) !== null).toBe(
-      role !== 'OPERATIONS',
-    );
+    expect(
+      screen.queryByRole('button', { name: 'Edit Atlas Lifting' }) !== null,
+    ).toBe(role !== 'OPERATIONS');
     expect(
       !screen
         .getByRole('switch', {
@@ -164,7 +176,7 @@ it('loads nullable rows, displays details and restores row focus', async () => {
   await user.click(within(dialog).getByRole('button', { name: 'Close' }));
   await waitFor(() =>
     expect(
-      screen.getByRole('button', { name: 'Actions for Atlas Lifting' }),
+      screen.getByRole('button', { name: 'View details for Atlas Lifting' }),
     ).toHaveFocus(),
   );
   expect(screen.queryByText(/Example company/)).not.toBeInTheDocument();
@@ -182,16 +194,13 @@ it.each([
 ] as const)('searches %s with trimming and case folding', async (key) => {
   const user = await mount();
   await screen.findByText('Atlas Lifting');
-  await user.type(
-    screen.getByRole('textbox', { name: 'Search customers' }),
-    `  ${customer[key]!.toUpperCase()}  `,
-  );
+  fireEvent.change(screen.getByRole('textbox', { name: 'Search customers' }), {
+    target: { value: `  ${customer[key]!.toUpperCase()}  ` },
+  });
   expect(screen.getByText('Atlas Lifting')).toBeVisible();
-  await user.clear(screen.getByRole('textbox', { name: 'Search customers' }));
-  await user.type(
-    screen.getByRole('textbox', { name: 'Search customers' }),
-    'absent',
-  );
+  fireEvent.change(screen.getByRole('textbox', { name: 'Search customers' }), {
+    target: { value: 'absent' },
+  });
   expect(screen.getByText('No matching customers')).toBeVisible();
   await user.click(screen.getAllByRole('button', { name: 'Clear filters' })[0]);
   expect(screen.getByText('Atlas Lifting')).toBeVisible();
@@ -217,16 +226,23 @@ it('paginates, resets filters and bounds pages after refreshed data shrinks', as
   expect(await screen.findByText('1–1 of 1')).toBeVisible();
 });
 it('shows empty and loading states', async () => {
+  const gate = createRequestGate();
   server.use(
     http.get('/api/customers', async () => {
-      await delay(200);
+      await gate.wait();
       return HttpResponse.json([]);
     }),
   );
-  await mount();
-  expect(await screen.findByText('Loading customers…')).toBeVisible();
+  try {
+    await mount();
+    await gate.started;
+    expect(await screen.findByText('Loading customers…')).toBeVisible();
+  } finally {
+    gate.release();
+  }
   expect(await screen.findByText('No customers yet')).toBeVisible();
 });
+
 it('retries safe fetch errors', async () => {
   server.use(
     http.get('/api/customers', () =>
@@ -254,10 +270,13 @@ it('creates with exact trimmed fields, preserves zero and refreshes cache', asyn
   const user = await mount();
   await screen.findByText('Atlas Lifting');
   await user.click(screen.getByRole('button', { name: 'Add customer' }));
-  await fill(user);
-  await user.clear(screen.getByLabelText(/Company name/));
-  await user.type(screen.getByLabelText(/Company name/), ' New company ');
-  await user.clear(screen.getByLabelText(/Customer email/));
+  fill();
+  fireEvent.change(screen.getByLabelText(/Company name/), {
+    target: { value: ' New company ' },
+  });
+  fireEvent.change(screen.getByLabelText(/Customer email/), {
+    target: { value: '' },
+  });
   await user.click(screen.getByRole('button', { name: 'Save customer' }));
   await screen.findByText('Customer created.');
   expect(posted).toHaveBeenCalledWith({
@@ -282,8 +301,9 @@ it('edits fetched details, sends only request fields and refreshes detail data',
   const user = await mount();
   await action(user, 'Edit');
   expect(await screen.findByDisplayValue('Colombo')).toBeVisible();
-  await user.clear(screen.getByLabelText(/Company address/));
-  await user.type(screen.getByLabelText(/Company address/), 'Kandy');
+  fireEvent.change(screen.getByLabelText(/Company address/), {
+    target: { value: 'Kandy' },
+  });
   await user.click(screen.getByRole('button', { name: 'Save customer' }));
   await screen.findByText('Customer updated.');
   expect(put).toHaveBeenCalledWith({
@@ -313,51 +333,87 @@ it.each([400, 403, 404, 409, 500])(
     const user = await mount();
     await action(user, 'Edit');
     await screen.findByDisplayValue('Atlas Lifting');
-    await user.clear(screen.getByLabelText(/Company name/));
-    await user.type(screen.getByLabelText(/Company name/), 'Changed');
+    fireEvent.change(screen.getByLabelText(/Company name/), {
+      target: { value: 'Changed' },
+    });
     await user.click(screen.getByRole('button', { name: 'Save customer' }));
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Save customer' }),
-      ).toBeEnabled(),
-    );
+    expect(
+      await screen.findByText(
+        status === 403
+          ? 'Access denied'
+          : status === 500
+            ? 'The service is unavailable. Please try again.'
+            : 'Cannot save',
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Save customer' })).toBeEnabled();
     expect(screen.getByDisplayValue('Changed')).toBeVisible();
     expect(screen.queryByText('Customer updated.')).not.toBeInTheDocument();
     if (status === 400)
       expect(await screen.findByText('Registration rejected')).toBeVisible();
   },
 );
+
 it('requires confirmation, blocks pending duplicates, refreshes the response and retains directory row', async () => {
-  const deleted = vi.fn();
+  const patched = vi.fn();
+  // Preserve the manually controlled response introduced in 25943c6.
+  const gate = createRequestGate();
   server.use(
     http.patch('/api/customers/42/activation', async ({ request }) => {
-      expect(await request.json()).toEqual({ active: false });
-      deleted();
-      await delay(250);
+      patched(await request.json());
+      await gate.wait();
       records = [{ ...customer, active: false }];
       return HttpResponse.json(records[0]);
     }),
   );
-  const user = await mount();
-  let dialog = await action(user, 'Deactivate');
-  expect(within(dialog).getByText(/change activation again/)).toBeVisible();
-  await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
-  expect(deleted).not.toHaveBeenCalled();
-  dialog = await action(user, 'Deactivate');
-  await user.click(
-    within(dialog).getByRole('button', { name: 'Deactivate customer' }),
-  );
-  expect(screen.getByRole('button', { name: 'Deactivating…' })).toBeDisabled();
-  expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-  await user.keyboard('{Escape}');
-  expect(screen.getByRole('dialog')).toBeVisible();
+  try {
+    const user = await mount();
+    let dialog = await action(user, 'Deactivate');
+    expect(within(dialog).getByText(/change activation again/)).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(patched).not.toHaveBeenCalled();
+    dialog = await action(user, 'Deactivate');
+    await user.dblClick(
+      within(dialog).getByRole('button', { name: 'Deactivate customer' }),
+    );
+    await gate.started;
+    const pending = within(dialog).getByRole('button', {
+      name: 'Deactivating…',
+    });
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
+    expect(pending).toBeDisabled();
+    expect(cancel).toBeDisabled();
+    const control = screen.getByRole('switch', {
+      name: 'Activation for Atlas Lifting',
+      hidden: true,
+    });
+    expect(control).toBeDisabled();
+    expect(control).toBeChecked();
+    await user.keyboard('{Escape}');
+    expect(dialog).toBeVisible();
+    expect(patched).toHaveBeenCalledTimes(1);
+  } finally {
+    gate.release();
+  }
   await screen.findByText(/Customer activation updated\./);
-  expect(deleted).toHaveBeenCalledTimes(1);
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
+  expect(patched).toHaveBeenCalledTimes(1);
+  expect(patched).toHaveBeenCalledWith({ active: false });
   expect(screen.getByText('Atlas Lifting')).toBeVisible();
+  expect(
+    screen.getByRole('switch', { name: 'Activation for Atlas Lifting' }),
+  ).not.toBeChecked();
+  expect(listRequests).toBeGreaterThan(1);
   expect(
     screen.queryByRole('button', { name: /Reactivate/ }),
   ).not.toBeInTheDocument();
 });
+
 it.each([403, 404, 409, 500])(
   'keeps deactivation failures visible in confirmation: %s',
   async (status) => {
@@ -371,11 +427,18 @@ it.each([403, 404, 409, 500])(
     await user.click(
       within(dialog).getByRole('button', { name: 'Deactivate customer' }),
     );
-    await waitFor(() =>
-      expect(
-        within(dialog).getByRole('button', { name: 'Deactivate customer' }),
-      ).toBeEnabled(),
-    );
+    expect(
+      await within(dialog).findByText(
+        status === 403
+          ? 'Access denied'
+          : status === 500
+            ? 'The service is unavailable. Please try again.'
+            : 'Unable to deactivate',
+      ),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByRole('button', { name: 'Deactivate customer' }),
+    ).toBeEnabled();
     expect(screen.getByRole('dialog')).toBeVisible();
     expect(
       screen.getByRole('switch', {
@@ -464,30 +527,38 @@ it('announces required fields and prevents requests for invalid forms', async ()
   await user.click(screen.getByRole('button', { name: 'Save customer' }));
   expect(await screen.findAllByText('This field is required.')).toHaveLength(6);
   expect(posted).not.toHaveBeenCalled();
-  await fill(user);
-  await user.clear(screen.getByLabelText(/Customer email/));
-  await user.type(screen.getByLabelText(/Customer email/), 'invalid');
+  fill();
+  fireEvent.change(screen.getByLabelText(/Customer email/), {
+    target: { value: 'invalid' },
+  });
   await user.click(screen.getByRole('button', { name: 'Save customer' }));
   expect(await screen.findByText('Enter a valid email address.')).toBeVisible();
   expect(posted).not.toHaveBeenCalled();
 });
 it('blocks duplicate create and cancellation while saving', async () => {
   const posted = vi.fn();
+  const gate = createRequestGate();
   server.use(
     http.post('/api/customers', async () => {
       posted();
-      await delay(300);
+      await gate.wait();
       return HttpResponse.json(customer, { status: 201 });
     }),
   );
-  const user = await mount();
-  await user.click(screen.getByRole('button', { name: 'Add customer' }));
-  await fill(user);
-  await user.dblClick(screen.getByRole('button', { name: 'Save customer' }));
-  expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
-  expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-  await user.keyboard('{Escape}');
-  expect(screen.getByRole('dialog')).toBeVisible();
+  try {
+    const user = await mount();
+    await user.click(screen.getByRole('button', { name: 'Add customer' }));
+    fill();
+    await user.dblClick(screen.getByRole('button', { name: 'Save customer' }));
+    await gate.started;
+    expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(posted).toHaveBeenCalledTimes(1);
+  } finally {
+    gate.release();
+  }
   await screen.findByText('Customer created.');
   expect(posted).toHaveBeenCalledTimes(1);
 });
@@ -562,4 +633,17 @@ it('refreshes persisted activation, supports reactivation and filters actual sta
   expect(
     screen.getByRole('switch', { name: 'Activation for Atlas Lifting' }),
   ).toBeChecked();
+});
+
+it('keeps registration in details but removes it from the directory', async () => {
+  const user = await mount();
+  await screen.findByText('Atlas Lifting');
+  expect(
+    screen.queryByRole('columnheader', { name: 'Registration number' }),
+  ).not.toBeInTheDocument();
+  await user.click(
+    screen.getByRole('button', { name: 'View details for Atlas Lifting' }),
+  );
+  const dialog = await screen.findByRole('dialog');
+  expect(await within(dialog).findByText('REG-42')).toBeVisible();
 });

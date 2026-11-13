@@ -7,6 +7,8 @@ import com.uvindu.crane_management_system.dto.UpdateCraneRequest;
 import com.uvindu.crane_management_system.exception.CraneAlreadyExistsException;
 import com.uvindu.crane_management_system.model.Crane;
 import com.uvindu.crane_management_system.model.CraneStatus;
+import com.uvindu.crane_management_system.model.JobCardStatus;
+import com.uvindu.crane_management_system.repository.JobCardRepository;
 import com.uvindu.crane_management_system.repository.CraneRepository;
 
 import org.springframework.stereotype.Service;
@@ -23,9 +25,12 @@ public class CraneService {
 
     private final CraneRepository craneRepository;
     private final MaintenanceRepository maintenanceRepository;
+    private final JobCardRepository jobCardRepository;
 
-    public CraneService(CraneRepository craneRepository, MaintenanceRepository maintenanceRepository) {
+    public CraneService(CraneRepository craneRepository, MaintenanceRepository maintenanceRepository,
+                        JobCardRepository jobCardRepository) {
         this.maintenanceRepository = maintenanceRepository;
+        this.jobCardRepository = jobCardRepository;
         this.craneRepository = craneRepository;
     }
 
@@ -146,27 +151,27 @@ public class CraneService {
     }
 
 
-    // Delete Crane
+    // Keep legacy soft deletion subject to the same activation policy.
+    @Transactional
     public void deleteCrane(Long id) {
-
-        Crane crane = craneRepository.findById(id)
-                .orElseThrow(()->
-                        BusinessException.notFound("Crane not found"));
-
-        crane.setActive(false);
-
-        craneRepository.save(crane);
-
+        updateActivation(id, false);
     }
 
     @Transactional
     public CraneResponse updateActivation(Long id, boolean active) {
 
-        Crane crane = craneRepository.findById(id)
+        // Serialize activation with existing job/maintenance assignment transactions.
+        Crane crane = craneRepository.findByIdForUpdate(id)
                 .orElseThrow(() ->
                         BusinessException.notFound("Crane not found")
                 );
 
+        if (!active && (jobCardRepository.existsByCraneId_IdAndStatus(id,
+                JobCardStatus.PENDING)
+                || maintenanceRepository.existsByCrane_IdAndStatus(id, MaintenanceStatus.SCHEDULED)
+                || maintenanceRepository.existsByCrane_IdAndStatus(id, MaintenanceStatus.IN_PROGRESS))) {
+            throw BusinessException.conflict("Finish or cancel pending jobs and unfinished maintenance before deactivating this crane");
+        }
         crane.setActive(active);
 
         Crane updatedCrane = craneRepository.save(crane);

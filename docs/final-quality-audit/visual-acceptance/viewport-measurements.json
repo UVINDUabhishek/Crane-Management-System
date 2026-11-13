@@ -1,0 +1,488 @@
+[
+  {
+    "page": "Cranes",
+    "pageWidth": 1440,
+    "regions": [
+      {
+        "contentWidth": 1142,
+        "label": "Cranes scroll area",
+        "width": 1142
+      }
+    ],
+    "viewport": 1440
+  },
+  {
+    "page": "Customers",
+    "pageWidth": 1440,
+    "regions": [
+      {
+        "contentWidth": 1142,
+        "label": "Customers scroll area",
+        "width": 1142
+      }
+    ],
+    "viewport": 1440
+  },
+  {
+    "page": "Quotations",
+    "pageWidth": 1440,
+    "regions": [
+      {
+        "contentWidth": 1142,
+        "label": "Quotations scroll area",
+        "width": 1142
+      }
+    ],
+    "viewport": 1440
+  },
+  {
+    "page": "Job cards",
+    "pageWidth": 1440,
+    "regions": [
+      {
+        "contentWidth": 1142,
+        "label": "Job cards scroll area",
+        "width": 1142
+      }
+    ],
+    "viewport": 1440
+  },
+  {
+    "page": "Timesheets",
+    "pageWidth": 1440,
+    "regions": [
+      {
+        "contentWidth": 1142,
+        "label": "Timesheets scroll area",
+        "width": 1142
+      }
+    ],
+    "viewport": 1440
+  },
+  {
+    "page": "Maintenance",
+    "pageWidth": 1440,
+    "regions": [
+      {
+        "contentWidth": 1142,
+        "label": "Maintenance scroll area",
+        "width": 1142
+      }
+    ],
+    "viewport": 1440
+  },
+  {
+    "page": "Invoices",
+    "pageWidth": 1440,
+    "regions": [
+      {
+        "contentWidth": 1142,
+        "label": "Invoices scroll area",
+        "width": 1142
+      }
+    ],
+    "viewport": 1440
+  },
+  {
+    "page": "Reports",
+    "pageWidth": 1440,
+    "regions": [
+      {
+        "contentWidth": 1142,
+        "label": "Report results scroll area",
+        "width": 1142
+      }
+    ],
+    "viewport": 1440
+  },
+  {
+    "page": "Users",
+    "pageWidth": 1440,
+    "regions": [
+      {
+        "contentWidth": 1142,
+        "label": "Users scroll area",
+        "width": 1142
+      }
+    ],
+    "viewport": 1440
+  },
+  {
+    "page": "Overview",
+    "pageWidth": 1440,
+    "regions": [],
+    "viewport": 1440
+  },
+  {
+    "page": "Overview",
+    "pageWidth": 1270,
+    "regions": [],
+    "viewport": 1280
+  },
+  {
+    "page": "Cranes",
+    "pageWidth": 1280,
+    "regions": [
+      {
+        "contentWidth": 982,
+        "label": "Cranes scroll area",
+        "width": 982
+      }
+    ],
+    "viewport": 1280
+  },
+  {
+    "page": "Customers",
+    "pageWidth": 1280,
+    "regions": [
+      {
+        "contentWidth": 982,
+        "label": "Customers scroll area",
+        "width": 982
+      }
+    ],
+    "viewport": 1280
+  },
+  {
+    "page": "Quotations",
+    "pageWidth": 1280,
+    "regions": [
+      {
+        "contentWidth": 1022,
+        "label": "Quotations scroll area",
+        "width": 982
+      }
+    ],
+    "viewport": 1280
+  },
+  {
+    "page": "Job cards",
+    "pageWidth": 1280,
+    "regions": [
+      {
+        "contentWidth": 982,
+        "label": "Job cards scroll area",
+        "width": 982
+      }
+    ],
+    "viewport": 1280
+  },
+  {
+    "page": "Timesheets",
+    "pageWidth": 1280,
+    "regions": [
+      {
+        "contentWidth": 982,
+        "label": "Timesheets scroll area",
+        "width": 982
+      }
+    ],
+    "viewport": 1280
+  },
+  {
+    "page": "Maintenance",
+    "pageWidth": 1280,
+    "regions": [
+      {
+        "contentWidth": 982,
+        "label": "Maintenance scroll area",
+        "width": 982
+      }
+    ],
+    "viewport": 1280
+  },
+  {
+    "page": "Invoices",
+    "pageWidth": 1280,
+    "regions": [
+      {
+        "contentWidth": 982,
+        "label": "Invoices scroll area",
+        "width": 982
+      }
+    ],
+    "viewport": 1280
+  },
+  {
+    "page": "Reports",
+    "pageWidth": 1270,
+    "regions": [
+      {
+        "contentWidth": 972,
+        "label": "Report results scroll area",
+        "width": 972
+      }
+    ],
+    "viewport": 1280
+  },
+  {
+    "page": "Users",
+    "pageWidth": 1270,
+    "regions": [
+      {
+        "contentWidth": 972,
+        "label": "Users scroll area",
+        "width": 972
+      }
+    ],
+    "viewport": 1280
+  },
+  {
+    "page": "Overview",
+    "pageWidth": 758,
+    "regions": [],
+    "viewport": 768
+  },
+  {
+    "page": "Cranes",
+    "pageWidth": 768,
+    "regions": [
+      {
+        "contentWidth": 757,
+        "label": "Cranes scroll area",
+        "width": 734
+      }
+    ],
+    "viewport": 768
+  },
+  {
+    "page": "Customers",
+    "pageWidth": 768,
+    "regions": [
+      {
+        "contentWidth": 734,
+        "label": "Customers scroll area",
+        "width": 734
+      }
+    ],
+    "viewport": 768
+  },
+  {
+    "page": "Quotations",
+    "pageWidth": 768,
+    "regions": [
+      {
+        "contentWidth": 1022,
+        "label": "Quotations scroll area",
+        "width": 734
+      }
+    ],
+    "viewport": 768
+  },
+  {
+    "page": "Job cards",
+    "pageWidth": 768,
+    "regions": [
+      {
+        "contentWidth": 939,
+        "label": "Job cards scroll area",
+        "width": 734
+      }
+    ],
+    "viewport": 768
+  },
+  {
+    "page": "Timesheets",
+    "pageWidth": 768,
+    "regions": [
+      {
+        "contentWidth": 815,
+        "label": "Timesheets scroll area",
+        "width": 734
+      }
+    ],
+    "viewport": 768
+  },
+  {
+    "page": "Maintenance",
+    "pageWidth": 768,
+    "regions": [
+      {
+        "contentWidth": 830,
+        "label": "Maintenance scroll area",
+        "width": 734
+      }
+    ],
+    "viewport": 768
+  },
+  {
+    "page": "Invoices",
+    "pageWidth": 768,
+    "regions": [
+      {
+        "contentWidth": 916,
+        "label": "Invoices scroll area",
+        "width": 734
+      }
+    ],
+    "viewport": 768
+  },
+  {
+    "page": "Reports",
+    "pageWidth": 768,
+    "regions": [
+      {
+        "contentWidth": 818,
+        "label": "Report results scroll area",
+        "width": 734
+      }
+    ],
+    "viewport": 768
+  },
+  {
+    "page": "Users",
+    "pageWidth": 768,
+    "regions": [
+      {
+        "contentWidth": 734,
+        "label": "Users scroll area",
+        "width": 734
+      }
+    ],
+    "viewport": 768
+  },
+  {
+    "page": "Overview",
+    "pageWidth": 365,
+    "regions": [],
+    "viewport": 375
+  },
+  {
+    "page": "Cranes",
+    "pageWidth": 365,
+    "regions": [
+      {
+        "contentWidth": 757,
+        "label": "Cranes scroll area",
+        "width": 331
+      }
+    ],
+    "viewport": 375
+  },
+  {
+    "page": "Customers",
+    "pageWidth": 365,
+    "regions": [
+      {
+        "contentWidth": 685,
+        "label": "Customers scroll area",
+        "width": 331
+      }
+    ],
+    "viewport": 375
+  },
+  {
+    "page": "Quotations",
+    "pageWidth": 375,
+    "regions": [
+      {
+        "contentWidth": 1022,
+        "label": "Quotations scroll area",
+        "width": 342
+      }
+    ],
+    "viewport": 375
+  },
+  {
+    "page": "Job cards",
+    "pageWidth": 365,
+    "regions": [
+      {
+        "contentWidth": 939,
+        "label": "Job cards scroll area",
+        "width": 331
+      }
+    ],
+    "viewport": 375
+  },
+  {
+    "page": "Timesheets",
+    "pageWidth": 375,
+    "regions": [
+      {
+        "contentWidth": 815,
+        "label": "Timesheets scroll area",
+        "width": 342
+      }
+    ],
+    "viewport": 375
+  },
+  {
+    "page": "Maintenance",
+    "pageWidth": 365,
+    "regions": [
+      {
+        "contentWidth": 830,
+        "label": "Maintenance scroll area",
+        "width": 331
+      }
+    ],
+    "viewport": 375
+  },
+  {
+    "page": "Invoices",
+    "pageWidth": 365,
+    "regions": [
+      {
+        "contentWidth": 916,
+        "label": "Invoices scroll area",
+        "width": 331
+      }
+    ],
+    "viewport": 375
+  },
+  {
+    "page": "Reports",
+    "pageWidth": 365,
+    "regions": [
+      {
+        "contentWidth": 818,
+        "label": "Report results scroll area",
+        "width": 331
+      }
+    ],
+    "viewport": 375
+  },
+  {
+    "page": "Users",
+    "pageWidth": 365,
+    "regions": [
+      {
+        "contentWidth": 654,
+        "label": "Users scroll area",
+        "width": 331
+      }
+    ],
+    "viewport": 375
+  },
+  {
+    "page": "Overview",
+    "pageWidth": 758,
+    "regions": [],
+    "viewport": 768
+  },
+  {
+    "page": "Reports",
+    "pageWidth": 365,
+    "regions": [
+      {
+        "contentWidth": 818,
+        "label": "Report results scroll area",
+        "width": 331
+      }
+    ],
+    "viewport": 375
+  },
+  {
+    "page": "Users",
+    "pageWidth": 768,
+    "regions": [
+      {
+        "contentWidth": 734,
+        "label": "Users scroll area",
+        "width": 734
+      }
+    ],
+    "viewport": 768
+  }
+]

@@ -1,6 +1,7 @@
 package com.uvindu.crane_management_system.service;
 
 import com.uvindu.crane_management_system.dto.LookupResponse;
+import com.uvindu.crane_management_system.dto.CraneLookupResponse;
 import com.uvindu.crane_management_system.dto.QuotationLookupResponse;
 import com.uvindu.crane_management_system.model.UserRole;
 import com.uvindu.crane_management_system.repository.*;
@@ -14,13 +15,14 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class LookupService {
+
     private final CraneRepository craneRepository;
     private final CustomerRepository customerRepository;
     private final QuotationRepository quotationRepository;
     private final OperatorRepository operatorRepository;
     private final UserRepository userRepository;
 
-    public List<LookupResponse> getCranes() {
+    public List<CraneLookupResponse> getCranes() {
         return craneRepository.findActiveLookupOptions();
     }
 
@@ -42,7 +44,8 @@ public class LookupService {
     }
 
     public List<LookupResponse> getMaintenancePeople() {
-        // Existing maintenance assignment permits any user, not only the MAINTENANCE role.
-        return userRepository.findActiveLookupOptions();
+        // New assignments exclude admins; preserve every other active role.
+        return userRepository.findActiveLookupOptionsByRoles(List.of(
+                UserRole.SALES, UserRole.OPERATIONS, UserRole.FINANCE, UserRole.MAINTENANCE));
     }
 }

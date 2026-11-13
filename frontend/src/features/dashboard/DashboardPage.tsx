@@ -56,9 +56,7 @@ export function DashboardPage() {
   });
   const header = (
     <PageHeader
-      eyebrow="OPERATIONS OVERVIEW"
       title="Operations at a glance"
-      description="A clear view of your fleet, active work and invoice records."
       actions={
         <Button
           variant="outlined"

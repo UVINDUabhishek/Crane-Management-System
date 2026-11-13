@@ -17,6 +17,7 @@ import {
   TableRow,
 } from '@mui/material';
 import { useId, useRef, type ReactNode, type RefObject } from 'react';
+import { alpha } from '@mui/material/styles';
 import { useMediaQuery } from '@mui/material';
 import { LoadingState } from '../States';
 export interface Column<T> {
@@ -30,6 +31,7 @@ export function DataTableShell<T>({
   columns,
   rows,
   rowKey,
+  isInactive,
   toolbar,
   filters,
   empty,
@@ -45,6 +47,8 @@ export function DataTableShell<T>({
   columns: Column<T>[];
   rows: T[];
   rowKey: (row: T) => string;
+  /** Visually distinguish inactive records without disabling row actions. */
+  isInactive?: (row: T) => boolean;
   toolbar?: ReactNode;
   filters?: ReactNode;
   empty: ReactNode;
@@ -74,7 +78,12 @@ export function DataTableShell<T>({
                   component="th"
                   scope="col"
                   key={c.key}
-                  align={c.align}
+                  align={c.key === 'actions' ? 'left' : c.align}
+                  sx={
+                    c.key === 'actions'
+                      ? { width: 172, minWidth: 172 }
+                      : undefined
+                  }
                 >
                   {c.label}
                 </TableCell>
@@ -84,7 +93,27 @@ export function DataTableShell<T>({
           <TableBody>
             {!loading &&
               rows.map((row) => (
-                <TableRow hover key={rowKey(row)}>
+                <TableRow
+                  hover
+                  key={rowKey(row)}
+                  sx={
+                    isInactive?.(row)
+                      ? (theme) => ({
+                          bgcolor: alpha(
+                            theme.palette.text.primary,
+                            theme.palette.mode === 'dark' ? 0.09 : 0.045,
+                          ),
+                          '& > td': { color: 'text.secondary' },
+                          '&:hover': {
+                            bgcolor: alpha(
+                              theme.palette.text.primary,
+                              theme.palette.mode === 'dark' ? 0.14 : 0.075,
+                            ),
+                          },
+                        })
+                      : undefined
+                  }
+                >
                   {columns.map((c) => (
                     <TableCell key={c.key} align={c.align}>
                       {c.render(row)}
@@ -165,8 +194,10 @@ export function ConfirmDialog({
   description,
   confirmLabel = 'Confirm',
   pending = false,
+  confirmDisabled = false,
   pendingLabel = 'Working…',
   returnFocusRef,
+  fallbackFocusRef,
   feedback,
   onConfirm,
   onClose,
@@ -176,8 +207,10 @@ export function ConfirmDialog({
   description: string;
   confirmLabel?: string;
   pending?: boolean;
+  confirmDisabled?: boolean;
   pendingLabel?: string;
   returnFocusRef?: RefObject<HTMLElement | null>;
+  fallbackFocusRef?: RefObject<HTMLElement | null>;
   feedback?: ReactNode;
   onConfirm: () => void;
   onClose: () => void;
@@ -199,8 +232,10 @@ export function ConfirmDialog({
             if (!pending) cancelRef.current?.focus();
           },
           onExited: () => {
-            if (returnFocusRef?.current?.isConnected)
-              returnFocusRef.current.focus();
+            const target = returnFocusRef?.current;
+            if (target?.isConnected && !target.matches(':disabled'))
+              target.focus();
+            else fallbackFocusRef?.current?.focus();
           },
         },
         paper: { 'aria-busy': pending },
@@ -221,7 +256,11 @@ export function ConfirmDialog({
         <Button ref={cancelRef} autoFocus disabled={pending} onClick={onClose}>
           Cancel
         </Button>
-        <Button variant="contained" disabled={pending} onClick={onConfirm}>
+        <Button
+          variant="contained"
+          disabled={pending || confirmDisabled}
+          onClick={onConfirm}
+        >
           {pending ? pendingLabel : confirmLabel}
         </Button>
       </DialogActions>

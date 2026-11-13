@@ -39,7 +39,7 @@ export function createAppTheme(dark: boolean) {
       divider: border,
       error: { main: dark ? '#f09898' : '#b91c1c' },
       navigation: {
-        background: dark ? '#0c1724' : '#102d46',
+        background: dark ? '#0c1724' : '#142d40',
         text: '#edf3f8',
         muted: '#a6b7c7',
         hover: '#203f55',
@@ -68,6 +68,24 @@ export function createAppTheme(dark: boolean) {
     components: {
       MuiCssBaseline: {
         styleOverrides: {
+          'html, *': {
+            scrollbarWidth: 'thin',
+            scrollbarColor: `${dark ? '#718699' : '#8496a6'} transparent`,
+            '&::-webkit-scrollbar': { width: 10, height: 10 },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: dark ? '#718699' : '#8496a6',
+              borderRadius: 8,
+              border: '2px solid transparent',
+              backgroundClip: 'padding-box',
+            },
+            '&::-webkit-scrollbar-thumb:hover': {
+              backgroundColor: dark ? '#a6b7c7' : '#5e6e83',
+            },
+            '@media (forced-colors: active)': {
+              scrollbarColor: 'auto',
+              scrollbarWidth: 'auto',
+            },
+          },
           'a:focus-visible, [tabindex="0"]:focus-visible': {
             outline: `2px solid ${dark ? '#60cdbb' : '#087f78'}`,
             outlineOffset: 3,
@@ -144,7 +162,7 @@ export function createAppTheme(dark: boolean) {
       },
       MuiTableCell: {
         styleOverrides: {
-          root: { borderColor: border, padding: '16px 20px' },
+          root: { borderColor: border, padding: '13px 16px' },
           head: {
             backgroundColor: dark ? '#1d303e' : '#f8fafc',
             color: dark ? '#b5c7d6' : '#566c7f',
@@ -169,6 +187,26 @@ export function createAppTheme(dark: boolean) {
         },
       },
       MuiTooltip: { defaultProps: { arrow: true } },
+      MuiMenu: {
+        styleOverrides: {
+          paper: {
+            border: `1px solid ${border}`,
+            borderRadius: 8,
+            boxShadow: '0 6px 18px rgba(0,0,0,.12)',
+            maxWidth: 'calc(100vw - 24px)',
+          },
+        },
+      },
+      MuiAutocomplete: {
+        styleOverrides: {
+          paper: {
+            border: `1px solid ${border}`,
+            borderRadius: 8,
+            boxShadow: '0 6px 18px rgba(0,0,0,.12)',
+          },
+          listbox: { padding: 4 },
+        },
+      },
       MuiIconButton: {
         styleOverrides: {
           root: { borderRadius: 8, minWidth: 44, minHeight: 44 },

@@ -7,7 +7,8 @@
     "dev": "vite",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
-    "test": "vitest run",
+    "test": "vitest run --maxWorkers=1 --testTimeout=15000",
+    "test:doctor": "node scripts/test-environment.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

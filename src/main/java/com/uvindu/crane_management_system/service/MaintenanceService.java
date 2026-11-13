@@ -53,6 +53,12 @@ public class MaintenanceService {
         Crane crane = craneRepository.findById(request.getCraneId())
                 .orElseThrow(() -> BusinessException.notFound("Crane not found"));
 
+        if (!crane.isActive()) {
+            throw BusinessException.conflict(
+                    "Cannot schedule maintenance for an inactive crane"
+            );
+        }
+
         User maintenancePerson = null;
 
         if (request.getMaintenancePersonId() != null) {
@@ -123,9 +129,15 @@ public class MaintenanceService {
         Maintenance maintenance = maintenanceRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> BusinessException.notFound("Maintenance not found"));
 
+        if (maintenance.getStatus() == MaintenanceStatus.COMPLETED
+                || maintenance.getStatus() == MaintenanceStatus.CANCELED) {
+            throw BusinessException.conflict("Completed or canceled maintenance cannot be updated");
+        }
+
         SchedulingService.validateDates(request.getMaintenanceStartDate(), request.getMaintenanceEndDate());
         Long previousCraneId = maintenance.getCrane().getId();
         schedulingService.lockCranes(previousCraneId, request.getCraneId());
+
         if (maintenance.getStatus() == MaintenanceStatus.SCHEDULED
                 || maintenance.getStatus() == MaintenanceStatus.IN_PROGRESS) {
             schedulingService.rejectBookingConflict(request.getCraneId(), request.getMaintenanceStartDate(),
@@ -134,6 +146,12 @@ public class MaintenanceService {
 
         Crane crane = craneRepository.findById(request.getCraneId())
                 .orElseThrow(() -> BusinessException.notFound("Crane not found"));
+
+        if (!crane.isActive()) {
+            throw BusinessException.conflict(
+                    "Cannot update maintenance for an inactive crane"
+            );
+        }
 
         maintenance.setCrane(crane);
         maintenance.setMaintenanceStartDate(request.getMaintenanceStartDate());

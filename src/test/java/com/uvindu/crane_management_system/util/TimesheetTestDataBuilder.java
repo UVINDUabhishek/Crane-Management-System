@@ -34,7 +34,7 @@ public class TimesheetTestDataBuilder {
 
     public static UpdateTimesheetRequest createUpdateTimesheetRequest() {
         UpdateTimesheetRequest request = new UpdateTimesheetRequest();
-        request.setDateOfWork(LocalDate.now().plusDays(1));
+        request.setDateOfWork(LocalDate.now().minusDays(1));
         request.setWorkedHours(new BigDecimal("10"));
         request.setDescription("Updated timesheet");
         return request;
