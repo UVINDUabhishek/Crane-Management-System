@@ -2,6 +2,12 @@
 
 Internal operations software for crane hire: fleet and customer records, quotations, job cards, timesheets, maintenance, invoices, reporting and user administration.
 
+## Application Screenshots
+
+| Invoice Management | User Administration | Reports |
+|---|---|---|
+| ![Invoices](docs/final-quality-audit/visual-acceptance/invoices-1440.jpg) | ![Users](docs/final-quality-audit/visual-acceptance/users-768.jpg) | ![Reports](docs/final-quality-audit/visual-acceptance/reports-375.jpg) |
+
 ## Architecture and workflows
 
 A Java 21 / Spring Boot 4.1.1 REST API uses Spring Security JWT authentication, JPA/Hibernate and PostgreSQL. The React 19 / TypeScript client uses Vite, Material UI, React Router, TanStack Query, React Hook Form and Axios. Role permissions cover ADMIN, SALES, OPERATIONS, FINANCE and MAINTENANCE; authorization is enforced by the backend. Registration is internal administration rather than a public customer portal. The browser holds the token in memory, so refreshing the page requires signing in again.
